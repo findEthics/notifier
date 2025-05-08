@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
                     val title = intent.getStringExtra("title") ?: ""
                     val text = intent.getStringExtra("text") ?: ""
                     val packageName = intent.getStringExtra("package") ?: ""
-                    val isGroupSummary = intent.getBooleanExtra("isGroupSummary", false)
+//                    val isGroupSummary = intent.getBooleanExtra("isGroupSummary", false)
                     val appName = getAppName(packageName)
 
                     notifications.removeAll { it.key == key } // Prevent duplicates
@@ -124,17 +124,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         recyclerView = findViewById(R.id.recyclerView)
-        adapter = NotificationAdapter(notifications) { packageName ->
+        adapter = NotificationAdapter(notifications) { notificationData ->
             try {
-                packageManager.getLaunchIntentForPackage(packageName)?.let {
+                packageManager.getLaunchIntentForPackage(notificationData.packageName)?.let {
                     it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     startActivity(it)
                 } ?: run {
-                    Toast.makeText(this, "App not present", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "App not found", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(this, "Cannot open app", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Error opening app", Toast.LENGTH_SHORT).show()
             }
+            // Remove from local list
+            notifications.removeAll { it.key == notificationData.key }
+            adapter.notifyDataSetChanged()
+            // Send cancellation command to service
+            LocalBroadcastManager.getInstance(this).sendBroadcast(
+                Intent("CANCEL_NOTIFICATION").apply {
+                    putExtra("key", notificationData.key)
+                }
+            )
         }
 
         recyclerView.apply {

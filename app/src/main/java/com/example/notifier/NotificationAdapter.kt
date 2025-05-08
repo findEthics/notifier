@@ -15,7 +15,7 @@ import java.util.Locale
 
 class NotificationAdapter(
     private val items: List<NotificationData>,
-    private val onClick: (String) -> Unit
+    private val onClick: (NotificationData) -> Unit
 ) : RecyclerView.Adapter<NotificationAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -48,7 +48,8 @@ class NotificationAdapter(
         holder.appName.text = spannable
 
         holder.itemView.setOnClickListener {
-            onClick(item.packageName)
+//            onClick(item.packageName)
+            onClick(item)
         }
     }
 
