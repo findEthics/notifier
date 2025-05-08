@@ -1,5 +1,5 @@
 package com.example.notifier
-
+import java.security.MessageDigest
 import android.app.Notification
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -30,7 +30,7 @@ class AppNotificationListenerService : NotificationListenerService() {
         val summaryText = extras.getString("android.summaryText") ?: "" //
         val isGroupSummary = extras.getBoolean("android.support.isGroupSummary", false)
 
-        val contentKey = "${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${System.currentTimeMillis()}" // Create unique key
+        val contentKey = "${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${sbn.postTime}".sha256() // Create unique key
         activeNotifications[contentKey] = sbn
 
         if (!isGroupSummary && contentKey in seenKeys) return // Skip already seen individual notifications (avoid duplicates)
@@ -39,22 +39,10 @@ class AppNotificationListenerService : NotificationListenerService() {
 
         val isWhatsAppSummary = (summaryText != "")
 
-        println("NOTIFICATION DEBUG:")
-        println("package: ${sbn.packageName}")
-        println("id: ${sbn.id}")
-        println("tag: ${sbn.tag}")
-        println("title: $title")
-        println("text: $text")
-        println("isGroupSummary: $isGroupSummary")
-        println("isWhatsAppSummary: $isWhatsAppSummary")
-        println("group: ${sbn.notification.group}")
-        println("extras: $extras")
-
         // Handle group summaries
-        println("Outside the IF %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+
         if (isGroupSummary || isWhatsAppSummary) {
             // Check if we already have a summary for this package
-            println("INSIDE SUMMARY HANDLING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
             summaryKeys[sbn.packageName]?.let { oldKey ->
                 // Remove old summary
                 LocalBroadcastManager.getInstance(this).sendBroadcast(
@@ -66,7 +54,7 @@ class AppNotificationListenerService : NotificationListenerService() {
             }
             // Track this new summary
             val groupId = sbn.notification.group ?: "default_group"
-            val summaryKey = "SUMMARY|${sbn.packageName}|$groupId"
+            val summaryKey = "SUMMARY|${sbn.packageName}|$groupId".sha256()
 
             summaryKeys[sbn.packageName] = summaryKey
             // Send the new summary
@@ -81,7 +69,6 @@ class AppNotificationListenerService : NotificationListenerService() {
             )
 
         } else { //Send individual notification
-            println("DISPLAY NOTIFICATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%-")
             val key = "INDIVIDUAL|${sbn.packageName}|$contentKey"
             LocalBroadcastManager.getInstance(this).sendBroadcast(
                 Intent("NEW_NOTIFICATION").apply {
@@ -116,13 +103,19 @@ class AppNotificationListenerService : NotificationListenerService() {
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""
 
-        val contentKey = "${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${System.currentTimeMillis()}" // Create unique key
+        val contentKey = "${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${sbn.postTime}".sha256() // Create unique key
         activeNotifications.remove(contentKey)
     }
 
     override fun onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(cancelReceiver)
         super.onDestroy()
+    }
+
+    fun String.sha256(): String {
+        return MessageDigest.getInstance("SHA-256")
+            .digest(this.toByteArray())
+            .fold("") { str, byte -> str + "%02x".format(byte) }
     }
 
 }
