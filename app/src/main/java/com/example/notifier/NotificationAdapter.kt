@@ -16,7 +16,6 @@ class NotificationAdapter(
         val text: TextView = view.findViewById(R.id.tvText)
         val appName: TextView = view.findViewById(R.id.tvAppName)
         val groupIndicator: TextView = view.findViewById(R.id.tvGroupIndicator)
-        val groupId: TextView = view.findViewById(R.id.tvGroupId)
 
     }
 
@@ -31,7 +30,6 @@ class NotificationAdapter(
         holder.title.text = item.title
         holder.text.text = item.text
         holder.appName.text = item.appName
-        holder.groupId.text = "Group ID: ${item.groupId}"
 
 
         // Show/hide group summary indicator
