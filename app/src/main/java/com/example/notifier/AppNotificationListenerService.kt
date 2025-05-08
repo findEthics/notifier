@@ -30,7 +30,7 @@ class AppNotificationListenerService : NotificationListenerService() {
         val summaryText = extras.getString("android.summaryText") ?: "" //
         val isGroupSummary = extras.getBoolean("android.support.isGroupSummary", false)
 
-        val contentKey = "${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${sbn.postTime}".sha256() // Create unique key
+        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${sbn.postTime}".sha256() // Create unique key
         activeNotifications[contentKey] = sbn
 
         if (!isGroupSummary && contentKey in seenKeys) return // Skip already seen individual notifications (avoid duplicates)
@@ -103,7 +103,7 @@ class AppNotificationListenerService : NotificationListenerService() {
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""
 
-        val contentKey = "${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${sbn.postTime}".sha256() // Create unique key
+        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${sbn.postTime}".sha256() // Create unique key
         activeNotifications.remove(contentKey)
     }
 

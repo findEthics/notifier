@@ -6,6 +6,5 @@ data class NotificationData(
     val packageName: String,
     val appName: String,
     val key: String,
-    val isGroupSummary: Boolean,
     val timestamp: Long = System.currentTimeMillis()
 )
