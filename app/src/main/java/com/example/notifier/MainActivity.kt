@@ -17,8 +17,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
     private lateinit var adapter: NotificationAdapter
-    private val seenNotificationKeys = mutableSetOf<String>() // For deduplication
-    private val seenGroups = mutableMapOf<String, Int>() // Group ID → Position in list
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -29,26 +27,13 @@ class MainActivity : AppCompatActivity() {
                     val text = intent.getStringExtra("text") ?: ""
                     val packageName = intent.getStringExtra("package") ?: ""
                     val isGroupSummary = intent.getBooleanExtra("isGroupSummary", false)
-                    val groupId = intent.getStringExtra("groupId") ?: ""
                     val appName = getAppName(packageName)
 
-//                    // Remove previous notification from the same group
-//                    seenGroups[groupId]?.let { position ->
-//                        if (position in 0 until notifications.size) {
-//                            notifications.removeAt(position)
-//                        }
-//                    }
-//                    // Remove any notification with the same key (safety)
-//                    notifications.removeAll { it.key == key }
-//
-//                    // Add new notification at top
-//                    notifications.add(0, NotificationData(title, text, packageName, appName, key))
-//                    seenGroups[groupId] = 0
-//                    adapter.notifyDataSetChanged()
-//                }
-                    // Remove previous group summary if exists
-                    if (isGroupSummary) {
-                        notifications.removeAll { it.isGroupSummary && it.groupId == groupId }
+                    // Check for duplicates
+                    val existingIndex = notifications.indexOfFirst { it.key == key }
+                    if (existingIndex >= 0) {
+                        // Update instead of adding duplicate
+                        notifications.removeAt(existingIndex)
                     }
 
                     // Add new notification at top
@@ -59,26 +44,20 @@ class MainActivity : AppCompatActivity() {
                         packageName = packageName,
                         appName = appName,
                         key = key,
-                        isGroupSummary = isGroupSummary,
-                        groupId = groupId
+                        isGroupSummary = isGroupSummary
                     ))
-
                     adapter.notifyDataSetChanged()
                 }
                 "REMOVE_NOTIFICATION" -> {
                     val key = intent.getStringExtra("key") ?: return
-                    notifications.removeAll { it.key == key }
-                    adapter.notifyDataSetChanged()
-                }
-                "REMOVE_ALL_WHATSAPP_SUMMARIES" -> {
-                    notifications.removeAll {
-                        it.packageName == "com.whatsapp" && it.isGroupSummary
-                    }
-                    adapter.notifyDataSetChanged()
+                    val removed = notifications.removeAll { it.key == key }
+                    if (removed) adapter.notifyDataSetChanged()
                 }
             }
         }
     }
+
+
 
 
     private fun getAppName(packageName: String): String {
@@ -96,11 +75,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Clear button setup
         val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
         btnClear.setOnClickListener {
             notifications.clear()
-            seenNotificationKeys.clear()
-            seenGroups.clear()
             adapter.notifyDataSetChanged()
         }
 
@@ -112,7 +90,6 @@ class MainActivity : AppCompatActivity() {
         val filter = IntentFilter().apply {
             addAction("NEW_NOTIFICATION")
             addAction("REMOVE_NOTIFICATION")
-            addAction("REMOVE_ALL_WHATSAPP_SUMMARIES")
         }
         LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter)
 
