@@ -32,8 +32,6 @@ class MainActivity : AppCompatActivity() {
                     val groupId = intent.getStringExtra("groupId") ?: ""
                     val appName = getAppName(packageName)
 
-
-
 //                    // Remove previous notification from the same group
 //                    seenGroups[groupId]?.let { position ->
 //                        if (position in 0 until notifications.size) {
