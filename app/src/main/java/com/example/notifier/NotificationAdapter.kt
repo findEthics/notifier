@@ -1,10 +1,17 @@
 package com.example.notifier
 
+import android.graphics.Typeface
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.StyleSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class NotificationAdapter(
     private val items: List<NotificationData>,
@@ -15,8 +22,6 @@ class NotificationAdapter(
         val title: TextView = view.findViewById(R.id.tvTitle)
         val text: TextView = view.findViewById(R.id.tvText)
         val appName: TextView = view.findViewById(R.id.tvAppName)
-        val groupIndicator: TextView = view.findViewById(R.id.tvGroupIndicator)
-
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -29,12 +34,18 @@ class NotificationAdapter(
         val item = items[position]
         holder.title.text = item.title
         holder.text.text = item.text
-        holder.appName.text = item.appName
 
-
-        // Show/hide group summary indicator
-        holder.groupIndicator.visibility =
-            if (item.isGroupSummary) View.VISIBLE else View.GONE
+        val timeString = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(item.timestamp))
+        // Combine appName (bold) and time (normal)
+        val combined = "${item.appName} $timeString"
+        val spannable = SpannableString(combined)
+        spannable.setSpan(
+            StyleSpan(Typeface.BOLD),
+            0,
+            item.appName.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        holder.appName.text = spannable
 
         holder.itemView.setOnClickListener {
             onClick(item.packageName)

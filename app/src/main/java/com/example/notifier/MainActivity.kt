@@ -40,7 +40,6 @@ class MainActivity : AppCompatActivity() {
                         packageName = packageName,
                         appName = appName,
                         key = key,
-                        isGroupSummary = isGroupSummary
                     ))
                     adapter.notifyDataSetChanged()
                 }

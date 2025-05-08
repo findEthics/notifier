@@ -9,21 +9,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Title"
-        android:textSize="20sp"
-        android:textStyle="bold"/>
-    <TextView
-        android:id="@+id/tvGroupIndicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="[Group Summary]"
-        android:visibility="gone"
-        android:textSize="12sp"/>
+        android:textSize="18sp"
+        android:textStyle="normal"/>
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Title"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold" />
 
     <TextView
@@ -31,7 +24,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Text"
-        android:textSize="20sp" />
+        android:textSize="16sp" />
 
 
 </LinearLayout>
