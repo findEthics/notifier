@@ -4,7 +4,25 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="12dp">
-
+    <TextView
+        android:id="@+id/tvGroupId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"/>
+    <TextView
+        android:id="@+id/tvAppName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Title"
+        android:textSize="20sp"
+        android:textStyle="bold"/>
+    <TextView
+        android:id="@+id/tvGroupIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="[Group Summary]"
+        android:visibility="gone"
+        android:textSize="12sp"/>
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="match_parent"

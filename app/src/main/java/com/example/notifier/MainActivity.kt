@@ -18,23 +18,81 @@ class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
     private lateinit var adapter: NotificationAdapter
     private val seenNotificationKeys = mutableSetOf<String>() // For deduplication
+    private val seenGroups = mutableMapOf<String, Int>() // Group ID → Position in list
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            intent?.let {
-                val key = it.getStringExtra("key") ?: return@let
-                val title = it.getStringExtra("title") ?: ""
-                val text = it.getStringExtra("text") ?: ""
-                val packageName = it.getStringExtra("package") ?: ""
+            when (intent?.action) {
+                "NEW_NOTIFICATION" -> {
+                    val key = intent.getStringExtra("key") ?: return
+                    val title = intent.getStringExtra("title") ?: ""
+                    val text = intent.getStringExtra("text") ?: ""
+                    val packageName = intent.getStringExtra("package") ?: ""
+                    val isGroupSummary = intent.getBooleanExtra("isGroupSummary", false)
+                    val groupId = intent.getStringExtra("groupId") ?: ""
+                    val appName = getAppName(packageName)
 
-                if (key !in seenNotificationKeys) {
-                    seenNotificationKeys.add(key)
-                    notifications.add(0, NotificationData(title, text, packageName))
+
+
+//                    // Remove previous notification from the same group
+//                    seenGroups[groupId]?.let { position ->
+//                        if (position in 0 until notifications.size) {
+//                            notifications.removeAt(position)
+//                        }
+//                    }
+//                    // Remove any notification with the same key (safety)
+//                    notifications.removeAll { it.key == key }
+//
+//                    // Add new notification at top
+//                    notifications.add(0, NotificationData(title, text, packageName, appName, key))
+//                    seenGroups[groupId] = 0
+//                    adapter.notifyDataSetChanged()
+//                }
+                    // Remove previous group summary if exists
+                    if (isGroupSummary) {
+                        notifications.removeAll { it.isGroupSummary && it.groupId == groupId }
+                    }
+
+                    // Add new notification at top
+                    notifications.removeAll { it.key == key } // Prevent duplicates
+                    notifications.add(0, NotificationData(
+                        title = title,
+                        text = text,
+                        packageName = packageName,
+                        appName = appName,
+                        key = key,
+                        isGroupSummary = isGroupSummary,
+                        groupId = groupId
+                    ))
+
+                    adapter.notifyDataSetChanged()
+                }
+                "REMOVE_NOTIFICATION" -> {
+                    val key = intent.getStringExtra("key") ?: return
+                    notifications.removeAll { it.key == key }
+                    adapter.notifyDataSetChanged()
+                }
+                "REMOVE_ALL_WHATSAPP_SUMMARIES" -> {
+                    notifications.removeAll {
+                        it.packageName == "com.whatsapp" && it.isGroupSummary
+                    }
                     adapter.notifyDataSetChanged()
                 }
             }
         }
     }
+
+
+    private fun getAppName(packageName: String): String {
+        return try {
+            val packageManager = applicationContext.packageManager
+            val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(applicationInfo).toString()
+        } catch (e: Exception) {
+            packageName // fallback if not found
+        }
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         btnClear.setOnClickListener {
             notifications.clear()
             seenNotificationKeys.clear()
+            seenGroups.clear()
             adapter.notifyDataSetChanged()
         }
 
@@ -52,8 +111,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupRecyclerView()
-        LocalBroadcastManager.getInstance(this)
-            .registerReceiver(receiver, IntentFilter("NEW_NOTIFICATION"))
+        val filter = IntentFilter().apply {
+            addAction("NEW_NOTIFICATION")
+            addAction("REMOVE_NOTIFICATION")
+            addAction("REMOVE_ALL_WHATSAPP_SUMMARIES")
+        }
+        LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter)
+
     }
 
     private fun setupRecyclerView() {
