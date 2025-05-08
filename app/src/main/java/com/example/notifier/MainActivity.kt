@@ -10,12 +10,14 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
+    private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: NotificationAdapter
 
     private val receiver = object : BroadcastReceiver() {
@@ -29,15 +31,9 @@ class MainActivity : AppCompatActivity() {
                     val isGroupSummary = intent.getBooleanExtra("isGroupSummary", false)
                     val appName = getAppName(packageName)
 
-                    // Check for duplicates
-                    val existingIndex = notifications.indexOfFirst { it.key == key }
-                    if (existingIndex >= 0) {
-                        // Update instead of adding duplicate
-                        notifications.removeAt(existingIndex)
-                    }
+                    notifications.removeAll { it.key == key } // Prevent duplicates
 
                     // Add new notification at top
-                    notifications.removeAll { it.key == key } // Prevent duplicates
                     notifications.add(0, NotificationData(
                         title = title,
                         text = text,
@@ -57,6 +53,36 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Inside MainActivity.kt
+    private fun setupSwipeToDelete() {
+        val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(
+            0,
+            ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean = false // No drag-and-drop
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                val notification = notifications[position]
+
+                // Remove from RecyclerView
+                notifications.removeAt(position)
+                adapter.notifyItemRemoved(position)
+
+                // Notify service to cancel the system notification
+                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(
+                    Intent("CANCEL_NOTIFICATION").apply {
+                        putExtra("key", notification.key)
+                    }
+                )
+            }
+        }
+        ItemTouchHelper(swipeToDeleteCallback).attachToRecyclerView(recyclerView)
+    }
 
 
 
@@ -87,6 +113,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupRecyclerView()
+        setupSwipeToDelete()
+
         val filter = IntentFilter().apply {
             addAction("NEW_NOTIFICATION")
             addAction("REMOVE_NOTIFICATION")
@@ -96,7 +124,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
+        recyclerView = findViewById(R.id.recyclerView)
         adapter = NotificationAdapter(notifications) { packageName ->
             try {
                 packageManager.getLaunchIntentForPackage(packageName)?.let {

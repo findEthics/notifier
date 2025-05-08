@@ -1,8 +1,10 @@
 package com.example.notifier
 
 import android.app.Notification
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -14,24 +16,39 @@ class AppNotificationListenerService : NotificationListenerService() {
     )
     private val seenKeys = mutableSetOf<String>()
     private val summaryKeys = mutableMapOf<String, String>() // Group ID → Latest Key
-
+    private val activeNotifications = mutableMapOf<String, StatusBarNotification>()
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName !in allowedPackages) return  // Ignore notifications not in the list
         val extras = sbn.notification.extras
+
         val title = extras.getString("android.title") ?: ""
-        val isGroupSummary = extras.getBoolean("android.support.isGroupSummary", false)
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
 
-        if (title.isEmpty() && text.isEmpty()) return // Skip empty notifications
+        if ((title.isEmpty() && text.isEmpty()) || !(extras.containsKey("android.template"))) return // Skip empty and has no template notifications
+
+        val summaryText = extras.getString("android.summaryText") ?: "" //
+        val isGroupSummary = extras.getBoolean("android.support.isGroupSummary", false)
 
         val contentKey = "${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${System.currentTimeMillis()}" // Create unique key
+        activeNotifications[contentKey] = sbn
 
         if (!isGroupSummary && contentKey in seenKeys) return // Skip already seen individual notifications (avoid duplicates)
 
         if (!isGroupSummary) { seenKeys.add(contentKey) } // Track individual notifications
 
-        val isWhatsAppSummary = title == "WhatsApp"// Title is just the app name
+        val isWhatsAppSummary = (summaryText != "")
+
+        println("NOTIFICATION DEBUG:")
+        println("package: ${sbn.packageName}")
+        println("id: ${sbn.id}")
+        println("tag: ${sbn.tag}")
+        println("title: $title")
+        println("text: $text")
+        println("isGroupSummary: $isGroupSummary")
+        println("isWhatsAppSummary: $isWhatsAppSummary")
+        println("group: ${sbn.notification.group}")
+        println("extras: $extras")
 
         // Handle group summaries
         println("Outside the IF %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
@@ -78,35 +95,34 @@ class AppNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    // Receiver to handle cancellation
+    private val cancelReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val key = intent.getStringExtra("key") ?: return
+            activeNotifications[key]?.let { sbn ->
+                cancelNotification(sbn.key) // Cancel the system notification
+                activeNotifications.remove(key)
+            }
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        LocalBroadcastManager.getInstance(this)
+            .registerReceiver(cancelReceiver, IntentFilter("CANCEL_NOTIFICATION"))
+    }
+
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""
-        val text = extras.getCharSequence("android.text")?.toString() ?: ""
-        val isGroupSummary = extras.getBoolean("android.support.isGroupSummary", false)
-        val isWhatsAppSummary = title == "WhatsApp"  // Use your detection logic here
 
-        // Generate the same key format used in onNotificationPosted
-        val key = if (isGroupSummary || isWhatsAppSummary) {
-            // Match the summary key format from onNotificationPosted
-            "SUMMARY|${sbn.packageName}|${sbn.notification.group ?: "default_group"}"
-        } else {
-            val contentKey = "${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${text}"
-            "INDIVIDUAL|${sbn.packageName}|$contentKey"
-        }
+        val contentKey = "${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${System.currentTimeMillis()}" // Create unique key
+        activeNotifications.remove(contentKey)
+    }
 
-        // Clean up tracking
-        if (isGroupSummary || isWhatsAppSummary) {
-            summaryKeys.remove(sbn.notification.group ?: "default_group")
-        } else {
-            seenKeys.remove("${sbn.packageName}|${sbn.id}|${sbn.tag}|${title}|${text}")
-        }
-
-        // Broadcast removal to MainActivity
-        LocalBroadcastManager.getInstance(this).sendBroadcast(
-            Intent("REMOVE_NOTIFICATION").apply {
-                putExtra("key", key)
-            }
-        )
+    override fun onDestroy() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(cancelReceiver)
+        super.onDestroy()
     }
 
 }
