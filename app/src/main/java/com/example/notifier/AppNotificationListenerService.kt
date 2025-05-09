@@ -11,7 +11,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class AppNotificationListenerService : NotificationListenerService() {
     private val allowedPackages = setOf(
-        "com.whatsapp","com.mudita.messages"
+        "com.whatsapp","com.mudita.messages","com.android.calendar","com.mudita.calendar"
         // Only listen for notifications from these apps
     )
     private val seenKeys = mutableSetOf<String>()
