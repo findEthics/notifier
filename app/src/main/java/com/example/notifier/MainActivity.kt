@@ -6,6 +6,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -15,10 +19,24 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 
+import com.spotify.android.appremote.api.ConnectionParams
+import com.spotify.android.appremote.api.Connector
+import com.spotify.android.appremote.api.SpotifyAppRemote
+import com.spotify.protocol.types.PlayerState
+import com.spotify.protocol.types.Track
+
+import com.spotify.sdk.android.auth.AuthorizationClient
+import com.spotify.sdk.android.auth.AuthorizationRequest
+import com.spotify.sdk.android.auth.AuthorizationResponse
+
 class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: NotificationAdapter
+    private val CLIENT_ID = "b5954f6b7e1f44b68a9c170550ce3d10"
+    private val REDIRECT_URI = "notifier://callback"
+    private var spotifyAppRemote: SpotifyAppRemote? = null
+    private val AUTH_TOKEN_REQUEST_CODE = 0x10
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -52,7 +70,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Inside MainActivity.kt
     private fun setupSwipeToDelete() {
         val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(
             0,
@@ -121,6 +138,101 @@ class MainActivity : AppCompatActivity() {
         LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter)
 
     }
+
+    private fun startSpotifyAuth() {
+        val builder = AuthorizationRequest.Builder(
+            CLIENT_ID,
+            AuthorizationResponse.Type.TOKEN,
+            REDIRECT_URI
+        )
+        builder.setScopes(arrayOf("app-remote-control", "user-modify-playback-state", "user-read-playback-state"))
+        val request = builder.build()
+        AuthorizationClient.openLoginActivity(this, AUTH_TOKEN_REQUEST_CODE, request)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        startSpotifyAuth()
+        val connectionParams = ConnectionParams.Builder(CLIENT_ID)
+            .setRedirectUri(REDIRECT_URI)
+            .showAuthView(true)
+            .build()
+
+        SpotifyAppRemote.connect(this, connectionParams, object : Connector.ConnectionListener {
+            override fun onConnected(appRemote: SpotifyAppRemote) {
+                spotifyAppRemote = appRemote
+                setupSpotifyControls()
+            }
+            override fun onFailure(throwable: Throwable) {
+                throwable.printStackTrace()
+                Log.e("Spotify", "Connection failed", throwable)
+            }
+
+        })
+    }
+
+    private fun connected() {
+        // Then we will write some more code here.
+    }
+
+    override fun onStop() {
+        super.onStop()
+        spotifyAppRemote?.let {
+            SpotifyAppRemote.disconnect(it)
+            spotifyAppRemote = null
+        }
+    }
+
+    private fun setupSpotifyControls() {
+        val btnPlayPause = findViewById<ImageButton>(R.id.btnPlayPause)
+        val btnPrev = findViewById<ImageButton>(R.id.btnPrev)
+        val btnNext = findViewById<ImageButton>(R.id.btnNext)
+        val tvTrack = findViewById<TextView>(R.id.tvTrack)
+        val tvArtist = findViewById<TextView>(R.id.tvArtist)
+        val ivAlbum = findViewById<ImageView>(R.id.ivAlbum)
+
+        // 1. Set button listeners ONCE
+        btnPlayPause.setOnClickListener {
+            println("^^^^^^^^^^^^^^^^ PLAY BUTTON CLICKED ^^^^^^^^^^^^^^^^^^^^^^^")
+            spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
+                if (playerState.isPaused) {
+                    spotifyAppRemote?.playerApi?.resume()
+                } else {
+                    spotifyAppRemote?.playerApi?.pause()
+                }
+            }
+        }
+
+        btnPrev.setOnClickListener {
+            spotifyAppRemote?.playerApi?.skipPrevious()
+        }
+
+        btnNext.setOnClickListener {
+            spotifyAppRemote?.playerApi?.skipNext()
+        }
+
+        // 2. Subscribe to player state for UI updates
+        spotifyAppRemote?.playerApi?.subscribeToPlayerState()?.setEventCallback { playerState: PlayerState ->
+            val track: Track? = playerState.track
+            if (track != null) {
+                tvTrack.text = track.name
+                tvArtist.text = track.artist.name
+                spotifyAppRemote?.imagesApi?.getImage(track.imageUri)?.setResultCallback {
+                    ivAlbum.setImageBitmap(it)
+                }
+            }
+
+            // Update play/pause button icon
+            if (playerState.isPaused) {
+                btnPlayPause.setImageResource(R.drawable.ic_play)
+            } else {
+                btnPlayPause.setImageResource(R.drawable.ic_pause)
+            }
+        }
+    }
+
+
+
 
     private fun setupRecyclerView() {
         recyclerView = findViewById(R.id.recyclerView)
