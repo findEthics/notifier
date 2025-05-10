@@ -89,10 +89,9 @@ class MainActivity : AppCompatActivity() {
         // Initialize SharedPreferences HERE
         sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-        // Restore saved states
-//        isVibrateMode = sharedPrefs.getBoolean(KEY_VIBRATE_MODE, audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE)
-        isVibrateMode = AudioManager.RINGER_MODE_VIBRATE == 1
-        isMuted = sharedPrefs.getBoolean(KEY_MUTE_STATE, audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0)
+        // Get current state of Vibrate and Mute
+        isVibrateMode = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
+        isMuted = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
 
         setupSpotifyControls()
 
@@ -255,17 +254,12 @@ class MainActivity : AppCompatActivity() {
         val btnMute = findViewById<ImageButton>(R.id.btnMute)
         val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
 
-        fun updateRingVibrateButton() {
-            val imageRes = if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring
-            btnRingVibrate.setImageResource(imageRes)
-        }
-
         // For vibrate mode
         val actualVibrate = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
         if (isVibrateMode != actualVibrate) {
             isVibrateMode = actualVibrate
             sharedPrefs.edit().putBoolean(KEY_VIBRATE_MODE, actualVibrate).apply()
-            updateRingVibrateButton()
+            btnRingVibrate.setImageResource(if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring)
         }
 
         // For mute state
