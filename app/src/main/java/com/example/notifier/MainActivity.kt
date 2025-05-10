@@ -40,6 +40,8 @@ class MainActivity : AppCompatActivity() {
     private val AUTH_TOKEN_REQUEST_CODE = 0x10
     private var isMuted = false
     private var previousVolume = 0
+    private var previousRingerVolume = 0
+    private var isVibrateMode = false
     private lateinit var audioManager: AudioManager
 
 
@@ -189,7 +191,7 @@ class MainActivity : AppCompatActivity() {
             spotifyAppRemote = null
         }
     }
-
+    // Setup Spotify, Volume and Ring Controls
     private fun setupSpotifyControls() {
         val btnPlayPause = findViewById<ImageButton>(R.id.btnPlayPause)
         val btnPrev = findViewById<ImageButton>(R.id.btnPrev)
@@ -198,6 +200,38 @@ class MainActivity : AppCompatActivity() {
         val tvArtist = findViewById<TextView>(R.id.tvArtist)
         val ivAlbum = findViewById<ImageView>(R.id.ivAlbum)
         val btnMute = findViewById<ImageButton>(R.id.btnMute)
+        val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
+
+        fun updateRingVibrateButton() {
+            btnRingVibrate.setImageResource(
+                if (isVibrateMode) R.drawable.ic_vibrate
+                else R.drawable.ic_ring
+            )
+        }
+
+        // Set initial state
+        updateRingVibrateButton()
+
+        btnRingVibrate.setOnClickListener {
+            println("%%%%%%%%%%%%%%%%%%%%%% VIBRATE LISTENER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+            if (isVibrateMode) {
+                // Switch back to normal ring mode
+                audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                audioManager.setStreamVolume(
+                    AudioManager.STREAM_RING,
+                    previousRingerVolume,
+                    AudioManager.FLAG_PLAY_SOUND
+                )
+            } else {
+                // Switch to vibrate mode
+                previousRingerVolume = audioManager.getStreamVolume(AudioManager.STREAM_RING)
+                audioManager.ringerMode = AudioManager.RINGER_MODE_VIBRATE
+            }
+            isVibrateMode = !isVibrateMode
+            updateRingVibrateButton()
+        }
+
+
 
         btnMute.setOnClickListener {
             if (!isMuted) {
