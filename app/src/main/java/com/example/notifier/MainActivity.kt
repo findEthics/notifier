@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.media.AudioManager
 import android.os.Bundle
 import android.provider.Settings
@@ -43,7 +44,10 @@ class MainActivity : AppCompatActivity() {
     private var previousRingerVolume = 0
     private var isVibrateMode = false
     private lateinit var audioManager: AudioManager
-
+    private lateinit var sharedPrefs: SharedPreferences
+    private val PREFS_NAME = "AppSettings"
+    private val KEY_VIBRATE_MODE = "vibrate_mode"
+    private val KEY_MUTE_STATE = "mute_state"
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -77,54 +81,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupSwipeToDelete() {
-        val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(
-            0,
-            ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
-        ) {
-            override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean = false // No drag-and-drop
-
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                val position = viewHolder.adapterPosition
-                val notification = notifications[position]
-
-                // Remove from RecyclerView
-                notifications.removeAt(position)
-                adapter.notifyItemRemoved(position)
-
-                // Notify service to cancel the system notification
-                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(
-                    Intent("CANCEL_NOTIFICATION").apply {
-                        putExtra("key", notification.key)
-                    }
-                )
-            }
-        }
-        ItemTouchHelper(swipeToDeleteCallback).attachToRecyclerView(recyclerView)
-    }
-
-
-
-    private fun getAppName(packageName: String): String {
-        return try {
-            val packageManager = applicationContext.packageManager
-            val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
-            packageManager.getApplicationLabel(applicationInfo).toString()
-        } catch (e: Exception) {
-            packageName // fallback if not found
-        }
-    }
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        // Initialize SharedPreferences HERE
+        sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        // Restore saved states
+        isVibrateMode = sharedPrefs.getBoolean(KEY_VIBRATE_MODE, audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE)
+        isMuted = sharedPrefs.getBoolean(KEY_MUTE_STATE, audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0)
+
+        println("%%%%%%%%%%%% isVibrateMode: ${isVibrateMode}, isMuted: ${isMuted} %%%%%%%%%%%%%%%%%%%%%")
+
+        setupSpotifyControls()
 
         // Clear button setup
         val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
@@ -148,17 +119,6 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun startSpotifyAuth() {
-        val builder = AuthorizationRequest.Builder(
-            CLIENT_ID,
-            AuthorizationResponse.Type.TOKEN,
-            REDIRECT_URI
-        )
-        builder.setScopes(arrayOf("app-remote-control", "user-modify-playback-state", "user-read-playback-state"))
-        val request = builder.build()
-        AuthorizationClient.openLoginActivity(this, AUTH_TOKEN_REQUEST_CODE, request)
-    }
-
     override fun onStart() {
         super.onStart()
         startSpotifyAuth()
@@ -176,12 +136,7 @@ class MainActivity : AppCompatActivity() {
                 throwable.printStackTrace()
                 Log.e("Spotify", "Connection failed", throwable)
             }
-
         })
-    }
-
-    private fun connected() {
-        // Then we will write some more code here.
     }
 
     override fun onStop() {
@@ -199,21 +154,27 @@ class MainActivity : AppCompatActivity() {
         val tvTrack = findViewById<TextView>(R.id.tvTrack)
         val tvArtist = findViewById<TextView>(R.id.tvArtist)
         val ivAlbum = findViewById<ImageView>(R.id.ivAlbum)
+
         val btnMute = findViewById<ImageButton>(R.id.btnMute)
         val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
 
+        // Set Initial state of mute and Vibrate Buttons
         fun updateRingVibrateButton() {
-            btnRingVibrate.setImageResource(
-                if (isVibrateMode) R.drawable.ic_vibrate
-                else R.drawable.ic_ring
+            println("%%%%%%%%%%%% isVibrateMode: ${isVibrateMode} %%%%%%%%%%%%%%%%%%%%%")
+            val imageRes = if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring
+            btnRingVibrate.setImageResource(imageRes)
+        }
+        updateRingVibrateButton()
+        fun updateMuteButton() {
+            println("%%%%%%%%%%%% isMuted: ${isMuted} %%%%%%%%%%%%%%%%%%%%%")
+            btnMute.setImageResource(
+                if (isMuted) R.drawable.ic_mute
+                else R.drawable.ic_unmute
             )
         }
-
-        // Set initial state
-        updateRingVibrateButton()
+        updateMuteButton()
 
         btnRingVibrate.setOnClickListener {
-            println("%%%%%%%%%%%%%%%%%%%%%% VIBRATE LISTENER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
             if (isVibrateMode) {
                 // Switch back to normal ring mode
                 audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
@@ -229,23 +190,22 @@ class MainActivity : AppCompatActivity() {
             }
             isVibrateMode = !isVibrateMode
             updateRingVibrateButton()
+
+            sharedPrefs.edit().putBoolean(KEY_VIBRATE_MODE, isVibrateMode).apply() // Add persistence
         }
-
-
 
         btnMute.setOnClickListener {
             if (!isMuted) {
                 // Save current volume and mute
                 previousVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
                 audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
-                btnMute.setImageResource(R.drawable.ic_mute)
-                isMuted = true
             } else {
                 // Restore previous volume
                 audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, previousVolume, 0)
-                btnMute.setImageResource(R.drawable.ic_unmute)
-                isMuted = false
             }
+            isMuted = !isMuted
+            updateMuteButton()
+            sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, isMuted).apply() // Add persistence
         }
 
 
@@ -289,7 +249,38 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-
+//    private fun verifySystemState() {
+//
+//        val btnMute = findViewById<ImageButton>(R.id.btnMute)
+//        val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
+//
+//        fun updateRingVibrateButton() {
+//            val imageRes = if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring
+//            btnRingVibrate.setImageResource(imageRes)
+//        }
+//
+//        // For vibrate mode
+//        val actualVibrate = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
+//        if (isVibrateMode != actualVibrate) {
+//            isVibrateMode = actualVibrate
+//            sharedPrefs.edit().putBoolean(KEY_VIBRATE_MODE, actualVibrate).apply()
+//            updateRingVibrateButton()
+//        }
+//
+//        // For mute state
+//        val actualMute = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
+//        if (isMuted != actualMute) {
+//            isMuted = actualMute
+//            sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, actualMute).apply()
+//            btnMute.setImageResource(if (actualMute) R.drawable.ic_mute else R.drawable.ic_unmute)
+//        }
+//    }
+//
+//    // Call this in onResume()
+//    override fun onResume() {
+//        super.onResume()
+//        verifySystemState()
+//    }
 
     private fun setupRecyclerView() {
         recyclerView = findViewById(R.id.recyclerView)
@@ -322,6 +313,36 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupSwipeToDelete() {
+        val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(
+            0,
+            ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean = false // No drag-and-drop
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                val notification = notifications[position]
+
+                // Remove from RecyclerView
+                notifications.removeAt(position)
+                adapter.notifyItemRemoved(position)
+
+                // Notify service to cancel the system notification
+                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(
+                    Intent("CANCEL_NOTIFICATION").apply {
+                        putExtra("key", notification.key)
+                    }
+                )
+            }
+        }
+        ItemTouchHelper(swipeToDeleteCallback).attachToRecyclerView(recyclerView)
+    }
+
     private fun isNotificationServiceEnabled(): Boolean {
         val enabledListeners = Settings.Secure.getString(
             contentResolver,
@@ -333,5 +354,26 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver)
         super.onDestroy()
+    }
+
+    private fun startSpotifyAuth() {
+        val builder = AuthorizationRequest.Builder(
+            CLIENT_ID,
+            AuthorizationResponse.Type.TOKEN,
+            REDIRECT_URI
+        )
+        builder.setScopes(arrayOf("app-remote-control", "user-modify-playback-state", "user-read-playback-state"))
+        val request = builder.build()
+        AuthorizationClient.openLoginActivity(this, AUTH_TOKEN_REQUEST_CODE, request)
+    }
+
+    private fun getAppName(packageName: String): String {
+        return try {
+            val packageManager = applicationContext.packageManager
+            val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(applicationInfo).toString()
+        } catch (e: Exception) {
+            packageName // fallback if not found
+        }
     }
 }

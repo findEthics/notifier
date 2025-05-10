@@ -89,14 +89,14 @@
                 android:id="@+id/btnRingVibrate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:src="@drawable/ic_ring"
+                android:src="@drawable/ic_vibrate"
                 android:contentDescription="Ring/Vibrate Toggle"/>
 
             <ImageButton
                 android:id="@+id/btnMute"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:src="@drawable/ic_mute"
+                android:src="@drawable/ic_unmute"
                 android:contentDescription="Mute/Unmute"/>
 
         </LinearLayout>
