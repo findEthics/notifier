@@ -90,10 +90,9 @@ class MainActivity : AppCompatActivity() {
         sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         // Restore saved states
-        isVibrateMode = sharedPrefs.getBoolean(KEY_VIBRATE_MODE, audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE)
+//        isVibrateMode = sharedPrefs.getBoolean(KEY_VIBRATE_MODE, audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE)
+        isVibrateMode = AudioManager.RINGER_MODE_VIBRATE == 1
         isMuted = sharedPrefs.getBoolean(KEY_MUTE_STATE, audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0)
-
-        println("%%%%%%%%%%%% isVibrateMode: ${isVibrateMode}, isMuted: ${isMuted} %%%%%%%%%%%%%%%%%%%%%")
 
         setupSpotifyControls()
 
@@ -146,6 +145,7 @@ class MainActivity : AppCompatActivity() {
             spotifyAppRemote = null
         }
     }
+
     // Setup Spotify, Volume and Ring Controls
     private fun setupSpotifyControls() {
         val btnPlayPause = findViewById<ImageButton>(R.id.btnPlayPause)
@@ -160,13 +160,12 @@ class MainActivity : AppCompatActivity() {
 
         // Set Initial state of mute and Vibrate Buttons
         fun updateRingVibrateButton() {
-            println("%%%%%%%%%%%% isVibrateMode: ${isVibrateMode} %%%%%%%%%%%%%%%%%%%%%")
             val imageRes = if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring
             btnRingVibrate.setImageResource(imageRes)
         }
         updateRingVibrateButton()
+
         fun updateMuteButton() {
-            println("%%%%%%%%%%%% isMuted: ${isMuted} %%%%%%%%%%%%%%%%%%%%%")
             btnMute.setImageResource(
                 if (isMuted) R.drawable.ic_mute
                 else R.drawable.ic_unmute
@@ -180,7 +179,7 @@ class MainActivity : AppCompatActivity() {
                 audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
                 audioManager.setStreamVolume(
                     AudioManager.STREAM_RING,
-                    previousRingerVolume,
+                    if (previousRingerVolume == 0) 3 else previousRingerVolume,
                     AudioManager.FLAG_PLAY_SOUND
                 )
             } else {
@@ -201,7 +200,10 @@ class MainActivity : AppCompatActivity() {
                 audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
             } else {
                 // Restore previous volume
-                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, previousVolume, 0)
+                audioManager.setStreamVolume(
+                    AudioManager.STREAM_MUSIC,
+                    if (previousVolume == 0) 3 else previousVolume,
+                    0)
             }
             isMuted = !isMuted
             updateMuteButton()
@@ -248,39 +250,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun verifySystemState() {
 
-//    private fun verifySystemState() {
-//
-//        val btnMute = findViewById<ImageButton>(R.id.btnMute)
-//        val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
-//
-//        fun updateRingVibrateButton() {
-//            val imageRes = if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring
-//            btnRingVibrate.setImageResource(imageRes)
-//        }
-//
-//        // For vibrate mode
-//        val actualVibrate = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
-//        if (isVibrateMode != actualVibrate) {
-//            isVibrateMode = actualVibrate
-//            sharedPrefs.edit().putBoolean(KEY_VIBRATE_MODE, actualVibrate).apply()
-//            updateRingVibrateButton()
-//        }
-//
-//        // For mute state
-//        val actualMute = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
-//        if (isMuted != actualMute) {
-//            isMuted = actualMute
-//            sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, actualMute).apply()
-//            btnMute.setImageResource(if (actualMute) R.drawable.ic_mute else R.drawable.ic_unmute)
-//        }
-//    }
-//
-//    // Call this in onResume()
-//    override fun onResume() {
-//        super.onResume()
-//        verifySystemState()
-//    }
+        val btnMute = findViewById<ImageButton>(R.id.btnMute)
+        val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
+
+        fun updateRingVibrateButton() {
+            val imageRes = if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring
+            btnRingVibrate.setImageResource(imageRes)
+        }
+
+        // For vibrate mode
+        val actualVibrate = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
+        if (isVibrateMode != actualVibrate) {
+            isVibrateMode = actualVibrate
+            sharedPrefs.edit().putBoolean(KEY_VIBRATE_MODE, actualVibrate).apply()
+            updateRingVibrateButton()
+        }
+
+        // For mute state
+        val actualMute = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
+        if (isMuted != actualMute) {
+            isMuted = actualMute
+            sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, actualMute).apply()
+            btnMute.setImageResource(if (actualMute) R.drawable.ic_mute else R.drawable.ic_unmute)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        verifySystemState()
+    }
 
     private fun setupRecyclerView() {
         recyclerView = findViewById(R.id.recyclerView)
