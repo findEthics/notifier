@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioManager
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -37,6 +38,10 @@ class MainActivity : AppCompatActivity() {
     private val REDIRECT_URI = "notifier://callback"
     private var spotifyAppRemote: SpotifyAppRemote? = null
     private val AUTH_TOKEN_REQUEST_CODE = 0x10
+    private var isMuted = false
+    private var previousVolume = 0
+    private lateinit var audioManager: AudioManager
+
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -117,6 +122,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
         // Clear button setup
         val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
         btnClear.setOnClickListener {
@@ -190,10 +197,26 @@ class MainActivity : AppCompatActivity() {
         val tvTrack = findViewById<TextView>(R.id.tvTrack)
         val tvArtist = findViewById<TextView>(R.id.tvArtist)
         val ivAlbum = findViewById<ImageView>(R.id.ivAlbum)
+        val btnMute = findViewById<ImageButton>(R.id.btnMute)
+
+        btnMute.setOnClickListener {
+            if (!isMuted) {
+                // Save current volume and mute
+                previousVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+                btnMute.setImageResource(R.drawable.ic_mute)
+                isMuted = true
+            } else {
+                // Restore previous volume
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, previousVolume, 0)
+                btnMute.setImageResource(R.drawable.ic_unmute)
+                isMuted = false
+            }
+        }
+
 
         // 1. Set button listeners ONCE
         btnPlayPause.setOnClickListener {
-            println("^^^^^^^^^^^^^^^^ PLAY BUTTON CLICKED ^^^^^^^^^^^^^^^^^^^^^^^")
             spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
                 if (playerState.isPaused) {
                     spotifyAppRemote?.playerApi?.resume()
