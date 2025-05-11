@@ -39,8 +39,9 @@ class AppNotificationListenerService : NotificationListenerService() {
 
         val isWhatsAppSummary = (summaryText != "")
 
-        // Handle group summaries
+        if (isWhatsAppSummary && title!="WhatsApp") return
 
+        // Handle group summaries
         if (isGroupSummary || isWhatsAppSummary) {
             // Check if we already have a summary for this package
             summaryKeys[sbn.packageName]?.let { oldKey ->
