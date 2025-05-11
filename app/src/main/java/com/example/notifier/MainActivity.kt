@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -20,13 +21,11 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-
 import com.spotify.android.appremote.api.ConnectionParams
 import com.spotify.android.appremote.api.Connector
 import com.spotify.android.appremote.api.SpotifyAppRemote
 import com.spotify.protocol.types.PlayerState
 import com.spotify.protocol.types.Track
-
 import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
@@ -38,6 +37,8 @@ class MainActivity : AppCompatActivity() {
     private val CLIENT_ID = "b5954f6b7e1f44b68a9c170550ce3d10"
     private val REDIRECT_URI = "notifier://callback"
     private var spotifyAppRemote: SpotifyAppRemote? = null
+    private var currentTrackUri: String? = null
+    private var currentContextUri: String? = null
     private val AUTH_TOKEN_REQUEST_CODE = 0x10
     private var isMuted = false
     private var previousVolume = 0
@@ -157,6 +158,15 @@ class MainActivity : AppCompatActivity() {
         val btnMute = findViewById<ImageButton>(R.id.btnMute)
         val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
 
+        val clickableViews = listOf(ivAlbum, tvTrack, tvArtist)
+
+        clickableViews.forEach { view ->
+            view.setOnClickListener {
+                openInSpotify()
+            }
+        }
+
+
         // Set Initial state of mute and Vibrate Buttons
         fun updateRingVibrateButton() {
             val imageRes = if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring
@@ -232,6 +242,8 @@ class MainActivity : AppCompatActivity() {
         // 2. Subscribe to player state for UI updates
         spotifyAppRemote?.playerApi?.subscribeToPlayerState()?.setEventCallback { playerState: PlayerState ->
             val track: Track? = playerState.track
+            currentTrackUri = track?.uri // Track URI (e.g. "spotify:track:123")
+
             if (track != null) {
                 tvTrack.text = track.name
                 tvArtist.text = track.artist.name
@@ -246,6 +258,29 @@ class MainActivity : AppCompatActivity() {
             } else {
                 btnPlayPause.setImageResource(R.drawable.ic_pause)
             }
+        }
+
+        //        for context changes
+        spotifyAppRemote?.playerApi?.subscribeToPlayerContext()?.setEventCallback { context ->
+                    currentContextUri = context.uri // Update when context changes without track change
+                }
+    }
+
+    private fun openInSpotify() {
+        val spotifyUri = currentContextUri?.takeIf { it.startsWith("spotify:playlist:") }
+            ?: currentTrackUri
+            ?: "spotify:"
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse(spotifyUri)
+            setPackage("com.spotify.music")
+            putExtra(Intent.EXTRA_REFERRER, Uri.parse("android-app://${packageName}"))
+        }
+
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, "Spotify not installed", Toast.LENGTH_SHORT).show()
         }
     }
 
