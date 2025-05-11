@@ -59,8 +59,8 @@ class MainActivity : AppCompatActivity() {
                     val title = intent.getStringExtra("title") ?: ""
                     val text = intent.getStringExtra("text") ?: ""
                     val packageName = intent.getStringExtra("package") ?: ""
-//                    val isGroupSummary = intent.getBooleanExtra("isGroupSummary", false)
                     val appName = getAppName(packageName)
+                    val systemKey = intent.getStringExtra("systemKey") ?: return
 
                     notifications.removeAll { it.key == key } // Prevent duplicates
 
@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity() {
                         packageName = packageName,
                         appName = appName,
                         key = key,
+                        systemKey = systemKey
                     ))
                     adapter.notifyDataSetChanged()
                 }
@@ -99,7 +100,6 @@ class MainActivity : AppCompatActivity() {
 
         val tvBattery = findViewById<TextView>(R.id.tvBattery)
         tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
-
 
         // Clear button setup
         val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
@@ -377,6 +377,11 @@ class MainActivity : AppCompatActivity() {
                 LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(
                     Intent("CANCEL_NOTIFICATION").apply {
                         putExtra("key", notification.key)
+                    }
+                )
+                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(
+                    Intent("CANCEL_SYSTEM_NOTIFICATION").apply {
+                        putExtra("systemKey", notification.systemKey)
                     }
                 )
             }

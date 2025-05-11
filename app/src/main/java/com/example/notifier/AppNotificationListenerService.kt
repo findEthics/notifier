@@ -12,7 +12,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class AppNotificationListenerService : NotificationListenerService() {
     private val allowedPackages = setOf(
-        "com.whatsapp","com.mudita.messages","com.android.calendar","com.mudita.calendar"
+        "com.whatsapp","com.mudita.messages","com.mudita.calendar","com.samsung.android.messaging"
         // Only listen for notifications from these apps
     )
     private val seenKeys = mutableSetOf<String>()
@@ -20,35 +20,29 @@ class AppNotificationListenerService : NotificationListenerService() {
     private val activeNotifications = mutableMapOf<String, StatusBarNotification>()
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (sbn.packageName !in allowedPackages) return  // Ignore notifications not in the list
-        val existing = activeNotifications.values.firstOrNull {
-            it.id == sbn.id && it.packageName == sbn.packageName
-        }
-
-        // If existing notification was updated, remove old version
-        existing?.let {
-            LocalBroadcastManager.getInstance(this).sendBroadcast(
-                Intent("REMOVE_NOTIFICATION").apply {
-                    putExtra("key", generateKey(it))
-                }
-            )
-        }
+        if (sbn.packageName !in allowedPackages) {
+            cancelNotification(sbn.key)
+            return
+        }  // Ignore notifications not in the list and remove from system notifications
         val extras = sbn.notification.extras
-
         val title = extras.getString("android.title") ?: ""
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
 
-        if ((title.isEmpty() && text.isEmpty()) || !(extras.containsKey("android.template"))) return // Skip empty and has no template notifications
+        if (title.isEmpty() || text.isEmpty() || !(extras.containsKey("android.template"))) {
+            cancelNotification(sbn.key)
+            return
+        } // Skip empty and has no template notifications
 
         val summaryText = extras.getString("android.summaryText") ?: ""
         val isWhatsAppSummary = (summaryText != "")
-        if (isWhatsAppSummary && title!="WhatsApp") return
+        if (isWhatsAppSummary && title!="WhatsApp") {
+            cancelNotification(sbn.key)
+            return
+        }
 
         val isGroupSummary = extras.getBoolean("android.support.isGroupSummary", false)
-
         val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${sbn.postTime}".sha256() // Create unique key
         activeNotifications[contentKey] = sbn
-
         if (!isGroupSummary && contentKey in seenKeys) return // Skip already seen individual notifications (avoid duplicates)
 
         if (!isGroupSummary) { seenKeys.add(contentKey) } // Track individual notifications
@@ -81,6 +75,7 @@ class AppNotificationListenerService : NotificationListenerService() {
                     putExtra("text", text)
                     putExtra("package", sbn.packageName)
                     putExtra("isGroupSummary", isGroupSummary)
+                    putExtra("systemKey", sbn.key)
                 }
             )
 
@@ -93,6 +88,7 @@ class AppNotificationListenerService : NotificationListenerService() {
                     putExtra("text", text)
                     putExtra("package", sbn.packageName)
                     putExtra("isGroupSummary", isGroupSummary)
+                    putExtra("systemKey", sbn.key)
                 }
             )
         }
@@ -104,6 +100,7 @@ class AppNotificationListenerService : NotificationListenerService() {
             val key = intent.getStringExtra("key") ?: return
             activeNotifications[key]?.let { sbn ->
                 cancelNotification(sbn.key) // Cancel the system notification
+                println("${sbn.packageName}|${sbn.id}|${sbn.notification.extras.getString("android.title")}|${sbn.postTime}")
                 activeNotifications.remove(key)
                 seenKeys.remove(key.split("|").last()) // Remove individual notification key
                 if (key.startsWith("SUMMARY")) { // 3. Handle group summaries
@@ -113,12 +110,20 @@ class AppNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    private val cancelSystemReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            cancelNotification(intent.getStringExtra("systemKey"))
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         LocalBroadcastManager.getInstance(this)
             .registerReceiver(refreshReceiver, IntentFilter("FORCE_REFRESH"))
         LocalBroadcastManager.getInstance(this)
             .registerReceiver(cancelReceiver, IntentFilter("CANCEL_NOTIFICATION"))
+        LocalBroadcastManager.getInstance(this)
+            .registerReceiver(cancelSystemReceiver, IntentFilter("CANCEL_SYSTEM_NOTIFICATION"))
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
@@ -126,7 +131,10 @@ class AppNotificationListenerService : NotificationListenerService() {
         val title = extras.getString("android.title") ?: ""
 
         val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${sbn.postTime}".sha256() // Create unique key
+        println("%%%%%%%%%%%%%%%%%%% ENTERING ON NOTIFICATION REMOVED %%%%%%%%%%%%%%%%%")
+        cancelNotification(sbn.key)
         activeNotifications.remove(contentKey)
+
     }
 
     private val refreshReceiver = object : BroadcastReceiver() {
@@ -155,8 +163,13 @@ class AppNotificationListenerService : NotificationListenerService() {
 
             // 2. Add/update existing system notifications
             currentSystemNotifications.forEach { sbn ->
+//                println("%%%%%%%%%%%%%%%%%%%%%% CANCEL NOTIFICATION FOR %%%%%%%%%%%%%%%%%")
+                println("${sbn.key}")
                 if (sbn.packageName in allowedPackages) {
                     onNotificationPosted(sbn) // Re-process valid notifications
+                } else {
+                    println("%%%%%% TRYING TO CANCEL SYSTEM NOTIFICATION %%%%%%%%")
+                    cancelNotification(sbn.key)
                 }
             }
         } catch (e: Exception) {
