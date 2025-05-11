@@ -94,7 +94,7 @@ class MainActivity : AppCompatActivity() {
         // Get current state of Vibrate and Mute
         isVibrateMode = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
         isMuted = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
-
+        startSpotifyAuth()
         setupSpotifyControls()
 
         val tvBattery = findViewById<TextView>(R.id.tvBattery)
@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        startSpotifyAuth()
+//
         val connectionParams = ConnectionParams.Builder(CLIENT_ID)
             .setRedirectUri(REDIRECT_URI)
             .showAuthView(true)
