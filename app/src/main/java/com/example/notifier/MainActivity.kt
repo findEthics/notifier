@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.media.AudioManager
 import android.net.Uri
+import android.os.BatteryManager
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -95,6 +96,9 @@ class MainActivity : AppCompatActivity() {
         isMuted = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
 
         setupSpotifyControls()
+
+        val tvBattery = findViewById<TextView>(R.id.tvBattery)
+        tvBattery.text = "\uD83D\uDD0B${getBatteryPercentage(this)}%"
 
         // Clear button setup
         val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
@@ -405,4 +409,13 @@ class MainActivity : AppCompatActivity() {
             packageName // fallback if not found
         }
     }
+
+    private fun getBatteryPercentage(context: Context): Int {
+        val ifilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val batteryStatus: Intent? = context.registerReceiver(null, ifilter)
+        val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        return if (level >= 0 && scale > 0) (level * 100 / scale) else 0
+    }
+
 }

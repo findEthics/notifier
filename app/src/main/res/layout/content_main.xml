@@ -77,7 +77,23 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
+        <!-- Battery indicator on the left -->
+        <TextView
+            android:id="@+id/tvBattery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔋100%"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="@android:color/black"
+            android:gravity="center_vertical"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+
+        <!-- Button group on the right -->
         <LinearLayout
+            android:id="@+id/volume_button_group"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -98,9 +114,9 @@
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_unmute"
                 android:contentDescription="Mute/Unmute"/>
-
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
+
 
 
     <androidx.recyclerview.widget.RecyclerView
