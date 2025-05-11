@@ -98,13 +98,21 @@ class MainActivity : AppCompatActivity() {
         setupSpotifyControls()
 
         val tvBattery = findViewById<TextView>(R.id.tvBattery)
-        tvBattery.text = "\uD83D\uDD0B${getBatteryPercentage(this)}%"
+        tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
+
 
         // Clear button setup
         val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
         btnClear.setOnClickListener {
             notifications.clear()
             adapter.notifyDataSetChanged()
+        }
+        //Refresh button setup
+        val fabRefresh = findViewById<FloatingActionButton>(R.id.fabRefresh)
+        fabRefresh.setOnClickListener {
+            // Send a broadcast to your NotificationListenerService to trigger a refresh
+            val refreshIntent = Intent("FORCE_REFRESH")
+            LocalBroadcastManager.getInstance(this).sendBroadcast(refreshIntent)
         }
 
         if (!isNotificationServiceEnabled()) {

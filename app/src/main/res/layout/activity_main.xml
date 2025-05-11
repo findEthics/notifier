@@ -21,16 +21,39 @@
 
     <include layout="@layout/content_main" />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/btnClear"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="20dp"
-        android:background="@color/black"
-        app:srcCompat="@drawable/outline_close"
-        app:fabCustomSize="68dp"
-        android:contentDescription="@string/clear_all_notifications"/>
+        android:layout_margin="16dp">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabRefresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_refresh"
+            android:contentDescription="Refresh Notifications"
+            android:background="@color/black"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="20dp"
+            app:fabCustomSize="68dp"/>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnClear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="20dp"
+            android:background="@color/black"
+            app:srcCompat="@drawable/outline_close"
+            app:fabCustomSize="68dp"
+            android:contentDescription="@string/clear_all_notifications"/>
+    </LinearLayout>
+
+
+
+
+
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
