@@ -30,6 +30,8 @@ import com.spotify.protocol.types.Track
 import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
+import android.media.RingtoneManager
+import android.media.Ringtone
 
 class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
@@ -74,6 +76,16 @@ class MainActivity : AppCompatActivity() {
                         systemKey = systemKey
                     ))
                     adapter.notifyDataSetChanged()
+                    if (packageName == "com.whatsapp") {
+                        try {
+                            val notification =
+                                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                            val r = RingtoneManager.getRingtone(context, notification)
+                            r.play()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
                 }
                 "REMOVE_NOTIFICATION" -> {
                     val key = intent.getStringExtra("key") ?: return
@@ -148,6 +160,9 @@ class MainActivity : AppCompatActivity() {
                 Log.e("Spotify", "Connection failed", throwable)
             }
         })
+
+        val tvBattery = findViewById<TextView>(R.id.tvBattery)
+        tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
     }
 
     override fun onStop() {
