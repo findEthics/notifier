@@ -215,7 +215,7 @@ class MainActivity : AppCompatActivity() {
                 audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
                 audioManager.setStreamVolume(
                     AudioManager.STREAM_RING,
-                    if (previousRingerVolume == 0) 3 else previousRingerVolume,
+                    if (previousRingerVolume == 0) 5 else previousRingerVolume,
                     AudioManager.FLAG_PLAY_SOUND
                 )
             } else {
