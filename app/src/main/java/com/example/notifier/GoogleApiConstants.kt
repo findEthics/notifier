@@ -9,9 +9,9 @@ import java.io.IOException
 object GoogleApiConstants {
 
 
-    val CLIENT_ID: String = ""
     val PROJECT_ID: String = "setup0204"
-    val CLIENT_SECRET: String = ""
+    val CLIENT_ID: String = BuildConfig.GOOGLE_WEB_CLIENT_ID
+    val CLIENT_SECRET: String = BuildConfig.GOOGLE_WEB_CLIENT_SECRET
     const val REDIRECT_URI_BASE = "http://127.0.0.1"
     val AUTH_URI: String = "https://accounts.google.com/o/oauth2/auth"
     val TOKEN_URI_OAUTH: String = "https://oauth2.googleapis.com/token"

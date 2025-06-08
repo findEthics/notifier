@@ -3,6 +3,14 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+} else {
+    logger.warn("local.properties file not found. API keys will not be set.")
+}
+
 android {
     namespace 'com.example.notifier'
     compileSdk 34
@@ -15,7 +23,11 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProperties.getProperty("GOOGLE_WEB_CLIENT_ID")}\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_SECRET", "\"${localProperties.getProperty("GOOGLE_WEB_CLIENT_SECRET")}\"")
     }
+
 
     buildTypes {
         release {
@@ -32,6 +44,7 @@ android {
     }
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 }
 
