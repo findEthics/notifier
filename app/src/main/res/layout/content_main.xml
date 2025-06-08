@@ -102,6 +102,13 @@
             app:layout_constraintBottom_toBottomOf="parent">
 
             <ImageButton
+                android:id="@+id/btnMute"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_unmute"
+                android:contentDescription="Mute/Unmute"/>
+
+            <ImageButton
                 android:id="@+id/btnRingVibrate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -109,11 +116,13 @@
                 android:contentDescription="Ring/Vibrate Toggle"/>
 
             <ImageButton
-                android:id="@+id/btnMute"
+                android:id="@+id/btnCalendar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:src="@drawable/ic_unmute"
-                android:contentDescription="Mute/Unmute"/>
+                android:src="@drawable/ic_calendar"
+                android:contentDescription="Fetch Calendar Events"/>
+
+
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 

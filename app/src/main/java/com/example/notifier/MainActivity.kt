@@ -31,7 +31,11 @@ import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
 import android.media.RingtoneManager
-import android.media.Ringtone
+
+import kotlinx.coroutines.launch
+import com.example.notifier.Calendar.SetupCalendar
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
@@ -52,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private val PREFS_NAME = "AppSettings"
     private val KEY_VIBRATE_MODE = "vibrate_mode"
     private val KEY_MUTE_STATE = "mute_state"
+    private lateinit var calendarSetup: SetupCalendar
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -100,14 +105,22 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         // Initialize SharedPreferences HERE
-        sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sharedPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
         // Get current state of Vibrate and Mute
         isVibrateMode = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
         isMuted = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
-        startSpotifyAuth()
+
+        // Calendar setup
+//
+        calendarSetup = SetupCalendar(this)
+        val btnCalendar = findViewById<ImageButton>(R.id.btnCalendar)
+        calendarSetup.setupCalendar(btnCalendar)
+
+
+//        startSpotifyAuth()
         setupSpotifyControls()
 
         val tvBattery = findViewById<TextView>(R.id.tvBattery)
@@ -130,6 +143,8 @@ class MainActivity : AppCompatActivity() {
         if (!isNotificationServiceEnabled()) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
+
+
 
         setupRecyclerView()
         setupSwipeToDelete()
