@@ -120,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         calendarSetup.setupCalendar(btnCalendar)
 
 
-//        startSpotifyAuth()
+        startSpotifyAuth()
         setupSpotifyControls()
 
         val tvBattery = findViewById<TextView>(R.id.tvBattery)

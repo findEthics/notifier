@@ -15,16 +15,6 @@ class CalendarActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_calendar)
 
-        // Setup Toolbar with back button
-        val toolbar = findViewById<MaterialToolbar>(R.id.calendar_toolbar)
-        setSupportActionBar(toolbar)
-        val title = "Today's Events"
-        val spannableTitle = SpannableString(title)
-        spannableTitle.setSpan(StyleSpan(android.graphics.Typeface.BOLD), 0, title.length, 0)
-        supportActionBar?.title = spannableTitle
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.setDisplayShowHomeEnabled(true)
-
         // Get the events from the intent
         val events = intent.getParcelableArrayListExtra<CalendarEvent>("EVENTS_LIST")
 
