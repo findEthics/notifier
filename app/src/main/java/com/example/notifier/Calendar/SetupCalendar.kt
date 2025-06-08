@@ -252,29 +252,30 @@ class SetupCalendar(private val activity: Activity) {
             val responseJson = makeKtorGetRequest(eventsUrl, accessToken)
             if (responseJson != null) {
                 val items = responseJson.optJSONArray("items")
+                val eventsList = ArrayList<CalendarEvent>() // Create a list for our data class
+
                 if (items != null) {
-                    if (items.length() == 0) {
-                        println("No events found for today.")
-                        Log.i("SetupCalendar", "No events found for today.")
-                    } else {
-                        println("--- Today's Google Calendar Events ---")
-                        for (i in 0 until items.length()) {
-                            val event = items.getJSONObject(i)
-                            val summary = event.optString("summary", "No Title")
-                            val startObj = event.optJSONObject("start")
-                            var startTime = "No Start Time"
-                            startObj?.let {
-                                startTime = it.optString("dateTime", it.optString("date", "No Start Date"))
-                            }
-                            println("Event: $summary, Start: $startTime")
-                            Log.i("SetupCalendar", "Event: $summary, Start: $startTime")
+                    for (i in 0 until items.length()) {
+                        val event = items.getJSONObject(i)
+                        val summary = event.optString("summary", "No Title")
+                        val startObj = event.optJSONObject("start")
+                        var startTime = "No Start Time"
+                        startObj?.let {
+                            startTime = it.optString("dateTime", it.optString("date", "No Start Date"))
                         }
-                        println("------------------------------------")
+                        // Add the parsed event to our list
+                        eventsList.add(CalendarEvent(summary, startTime))
                     }
-                } else {
-                    println("No 'items' array found in calendar response.")
-                    Log.w("SetupCalendar", "No 'items' array found in calendar response: ${responseJson.toString(2)}")
                 }
+
+                // Launch the new activity on the Main thread
+                withContext(Dispatchers.Main) {
+                    val intent = Intent(activity, CalendarActivity::class.java).apply {
+                        putParcelableArrayListExtra("EVENTS_LIST", eventsList)
+                    }
+                    activity.startActivity(intent)
+                }
+
             } else {
                 Log.e("SetupCalendar", "Failed to fetch calendar events: No response JSON")
             }
