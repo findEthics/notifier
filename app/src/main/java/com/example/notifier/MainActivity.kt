@@ -30,6 +30,12 @@ import com.spotify.protocol.types.Track
 import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
+import android.media.RingtoneManager
+
+import kotlinx.coroutines.launch
+import com.example.notifier.Calendar.SetupCalendar
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
@@ -50,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private val PREFS_NAME = "AppSettings"
     private val KEY_VIBRATE_MODE = "vibrate_mode"
     private val KEY_MUTE_STATE = "mute_state"
+    private lateinit var calendarSetup: SetupCalendar
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -74,6 +81,16 @@ class MainActivity : AppCompatActivity() {
                         systemKey = systemKey
                     ))
                     adapter.notifyDataSetChanged()
+                    if (packageName == "com.whatsapp") {
+                        try {
+                            val notification =
+                                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                            val r = RingtoneManager.getRingtone(context, notification)
+                            r.play()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
                 }
                 "REMOVE_NOTIFICATION" -> {
                     val key = intent.getStringExtra("key") ?: return
@@ -88,13 +105,21 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         // Initialize SharedPreferences HERE
-        sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sharedPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
         // Get current state of Vibrate and Mute
         isVibrateMode = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
         isMuted = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
+
+        // Calendar setup
+//
+        calendarSetup = SetupCalendar(this)
+        val btnCalendar = findViewById<ImageButton>(R.id.btnCalendar)
+        calendarSetup.setupCalendar(btnCalendar)
+
+
         startSpotifyAuth()
         setupSpotifyControls()
 
@@ -118,6 +143,8 @@ class MainActivity : AppCompatActivity() {
         if (!isNotificationServiceEnabled()) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
+
+
 
         setupRecyclerView()
         setupSwipeToDelete()
@@ -148,6 +175,9 @@ class MainActivity : AppCompatActivity() {
                 Log.e("Spotify", "Connection failed", throwable)
             }
         })
+
+        val tvBattery = findViewById<TextView>(R.id.tvBattery)
+        tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
     }
 
     override fun onStop() {
@@ -200,7 +230,7 @@ class MainActivity : AppCompatActivity() {
                 audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
                 audioManager.setStreamVolume(
                     AudioManager.STREAM_RING,
-                    if (previousRingerVolume == 0) 3 else previousRingerVolume,
+                    if (previousRingerVolume == 0) 5 else previousRingerVolume,
                     AudioManager.FLAG_PLAY_SOUND
                 )
             } else {

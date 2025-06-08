@@ -12,7 +12,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class AppNotificationListenerService : NotificationListenerService() {
     private val allowedPackages = setOf(
-        "com.whatsapp","com.mudita.messages","com.mudita.calendar","com.samsung.android.messaging"
+        "com.whatsapp","com.mudita.messages","com.mudita.calendar"
         // Only listen for notifications from these apps
     )
     private val seenKeys = mutableSetOf<String>()
@@ -131,7 +131,6 @@ class AppNotificationListenerService : NotificationListenerService() {
         val title = extras.getString("android.title") ?: ""
 
         val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${sbn.postTime}".sha256() // Create unique key
-        println("%%%%%%%%%%%%%%%%%%% ENTERING ON NOTIFICATION REMOVED %%%%%%%%%%%%%%%%%")
         cancelNotification(sbn.key)
         activeNotifications.remove(contentKey)
 
@@ -163,12 +162,9 @@ class AppNotificationListenerService : NotificationListenerService() {
 
             // 2. Add/update existing system notifications
             currentSystemNotifications.forEach { sbn ->
-//                println("%%%%%%%%%%%%%%%%%%%%%% CANCEL NOTIFICATION FOR %%%%%%%%%%%%%%%%%")
-                println("${sbn.key}")
                 if (sbn.packageName in allowedPackages) {
                     onNotificationPosted(sbn) // Re-process valid notifications
                 } else {
-                    println("%%%%%% TRYING TO CANCEL SYSTEM NOTIFICATION %%%%%%%%")
                     cancelNotification(sbn.key)
                 }
             }
