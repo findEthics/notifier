@@ -21,7 +21,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
         val formattedTime = try {
             val odt = OffsetDateTime.parse(eventStartTime)
-            val formatter = DateTimeFormatter.ofPattern("hh:mm a")
+            val formatter = DateTimeFormatter.ofPattern("HH:mm")
             odt.format(formatter)
         } catch (e: Exception) { "" }
 

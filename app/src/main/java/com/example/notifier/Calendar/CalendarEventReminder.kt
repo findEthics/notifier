@@ -18,10 +18,19 @@ class CalendarEventReminder {
         try {
             val odt = OffsetDateTime.parse(event.startTime)
             val eventTimeMillis = odt.toInstant().toEpochMilli()
-            val reminderTimeMillis = eventTimeMillis - (15 * 60 * 1000) // 15 minutes before
+            var reminderTimeMillis = eventTimeMillis - (15 * 60 * 1000) // 15 minutes before
+            val currentTimeMillis = System.currentTimeMillis()
 
             // Schedule the alarm only if the reminder time is in the future
-            if (reminderTimeMillis > System.currentTimeMillis()) {
+            if (eventTimeMillis > currentTimeMillis) {
+
+                // Check if the standard 15-minute reminder time is in the past
+                if (reminderTimeMillis <= currentTimeMillis) {
+                    Log.d("CalendarEventReminder", "Event '${event.summary}' is too soon. Setting reminder for 1 minute from now.")
+                    // If it is, set a new reminder time for 1 minute from now
+                    reminderTimeMillis = currentTimeMillis + (1 * 60 * 1000)
+                }
+
                 val intent = Intent(context, AlarmReceiver::class.java).apply {
                     putExtra("EVENT_SUMMARY", event.summary)
                     putExtra("EVENT_START_TIME", event.startTime)
