@@ -7,26 +7,14 @@
     android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fitsSystemWindows="true">
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize" />
-
-    </com.google.android.material.appbar.AppBarLayout>
-
     <include layout="@layout/content_main" />
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp">
+        android:layout_margin="8dp">
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabRefresh"
@@ -34,7 +22,6 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_refresh"
             android:contentDescription="Refresh Notifications"
-            android:background="@color/white"
             android:layout_marginEnd="20dp"
             android:layout_marginBottom="20dp"
             app:fabCustomSize="68dp"/>
@@ -43,17 +30,11 @@
             android:id="@+id/btnClear"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="20dp"
-            android:layout_marginBottom="20dp"
-            android:background="@color/black"
-            app:srcCompat="@drawable/outline_close"
+            app:srcCompat="@android:drawable/ic_menu_close_clear_cancel"
             app:fabCustomSize="68dp"
             android:contentDescription="@string/clear_all_notifications"/>
+
+
     </LinearLayout>
-
-
-
-
-
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
