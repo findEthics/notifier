@@ -1,6 +1,5 @@
 package com.example.notifier
 import java.security.MessageDigest
-import android.app.Notification
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -12,7 +11,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class AppNotificationListenerService : NotificationListenerService() {
     private val allowedPackages = setOf(
-        "com.whatsapp","com.mudita.messages","com.mudita.calendar"
+        "com.whatsapp","com.mudita.messages","com.mudita.calendar","com.example.notifier"
         // Only listen for notifications from these apps
     )
     private val seenKeys = mutableSetOf<String>()
@@ -21,17 +20,21 @@ class AppNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName !in allowedPackages) {
+            Log.d("NotificationListenerService", "Ignoring notification from ${sbn.packageName}")
             cancelNotification(sbn.key)
             return
         }  // Ignore notifications not in the list and remove from system notifications
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
+        Log.d("NotificationListenerService", "Received notification from ${sbn.packageName}: $title - $text, $extras")
 
-        if (title.isEmpty() || text.isEmpty() || !(extras.containsKey("android.template"))) {
-            cancelNotification(sbn.key)
-            return
-        } // Skip empty and has no template notifications
+        if (sbn.packageName != "com.example.notifier") {
+            if (title.isEmpty() || text.isEmpty() || !(extras.containsKey("android.template"))) {
+                cancelNotification(sbn.key)
+                return
+            }
+        }// Skip empty and has no template notifications
 
         val summaryText = extras.getString("android.summaryText") ?: ""
         val isWhatsAppSummary = (summaryText != "")
@@ -100,7 +103,6 @@ class AppNotificationListenerService : NotificationListenerService() {
             val key = intent.getStringExtra("key") ?: return
             activeNotifications[key]?.let { sbn ->
                 cancelNotification(sbn.key) // Cancel the system notification
-                println("${sbn.packageName}|${sbn.id}|${sbn.notification.extras.getString("android.title")}|${sbn.postTime}")
                 activeNotifications.remove(key)
                 seenKeys.remove(key.split("|").last()) // Remove individual notification key
                 if (key.startsWith("SUMMARY")) { // 3. Handle group summaries

@@ -1,10 +1,16 @@
 package com.example.notifier
 
+import android.Manifest
+import android.app.AlarmManager
+import android.app.AlertDialog
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.net.Uri
 import android.os.BatteryManager
@@ -31,6 +37,9 @@ import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
 import android.media.RingtoneManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 
 import kotlinx.coroutines.launch
 import com.example.notifier.Calendar.SetupCalendar
@@ -101,9 +110,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Activity Result Launcher for POST_NOTIFICATIONS permission
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                // Permission is granted. You can now post notifications.
+                Log.d("Permissions", "POST_NOTIFICATIONS permission granted.")
+                checkAndRequestExactAlarmPermission() // Chain to the next permission check
+            } else {
+                // Explain to the user that the feature is unavailable
+                Log.w("Permissions", "POST_NOTIFICATIONS permission denied.")
+                Toast.makeText(this, "Notification permission denied. Reminders will not work.", Toast.LENGTH_LONG).show()
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        createNotificationChannel()
+        checkAndRequestPermissions()
 
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         // Initialize SharedPreferences HERE
@@ -459,6 +485,76 @@ class MainActivity : AppCompatActivity() {
         val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
         val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
         return if (level >= 0 && scale > 0) (level * 100 / scale) else 0
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Calendar Event Reminders"
+            val descriptionText = "Notifications for upcoming calendar events"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel("CALENDAR_REMINDERS", name, importance).apply {
+                description = descriptionText
+            }
+            // Register the channel with the system
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun checkAndRequestPermissions() {
+        // 1. Check for POST_NOTIFICATIONS (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permission is already granted
+                    Log.d("Permissions", "POST_NOTIFICATIONS permission already granted.")
+                    checkAndRequestExactAlarmPermission() // Check next permission
+                }
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
+                    // Show a dialog explaining why you need the permission
+                    AlertDialog.Builder(this)
+                        .setTitle("Permission Needed")
+                        .setMessage("This app needs permission to post notifications to provide reminders for your calendar events.")
+                        .setPositiveButton("OK") { _, _ ->
+                            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .create()
+                        .show()
+                }
+                else -> {
+                    // Directly request the permission
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        } else {
+            // For older versions, this permission is not needed, so check the next one
+            checkAndRequestExactAlarmPermission()
+        }
+    }
+
+    // 2. Check for SCHEDULE_EXACT_ALARM (Android 12+)
+    private fun checkAndRequestExactAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                // Show a dialog to explain and guide the user to settings
+                AlertDialog.Builder(this)
+                    .setTitle("Permission Needed for Reminders")
+                    .setMessage("To set precise reminders for your events, this app needs special permission to schedule exact alarms. Please grant it in the next screen.")
+                    .setPositiveButton("Go to Settings") { _, _ ->
+                        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                        startActivity(intent)
+                    }
+                    .setNegativeButton("Not now", null)
+                    .create()
+                    .show()
+            }
+        }
     }
 
 }
