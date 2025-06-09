@@ -295,6 +295,12 @@ class SetupCalendar(private val activity: Activity) {
                         eventsList.add(CalendarEvent(summary, startTime))
                     }
                 }
+
+                // SCHEDULING LOGIC ---
+                val reminderScheduler = CalendarEventReminder()
+                eventsList.forEach { event ->
+                    reminderScheduler.scheduleReminderForEvent(activity, event)
+                }
                 return eventsList // Return the list
             }
         } catch (e: Exception) {
