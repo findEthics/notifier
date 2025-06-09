@@ -48,6 +48,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/ic_prev"
+            android:background="?android:attr/selectableItemBackground"
+            android:padding="8dp"
             android:contentDescription="Previous"/>
 
         <ImageButton
@@ -55,6 +57,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/ic_play"
+            android:background="?android:attr/selectableItemBackground"
+            android:padding="8dp"
             android:contentDescription="Play/Pause"/>
 
         <ImageButton
@@ -62,6 +66,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/ic_next"
+            android:background="?android:attr/selectableItemBackground"
+            android:padding="8dp"
             android:contentDescription="Next"/>
 
 
@@ -106,6 +112,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_unmute"
+                android:background="?android:attr/selectableItemBackground"
+                android:padding="8dp"
                 android:contentDescription="Mute/Unmute"/>
 
             <ImageButton
@@ -113,6 +121,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_vibrate"
+                android:background="?android:attr/selectableItemBackground"
+                android:padding="8dp"
                 android:contentDescription="Ring/Vibrate Toggle"/>
 
             <ImageButton
@@ -120,6 +130,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_calendar"
+                android:background="?android:attr/selectableItemBackground"
+                android:padding="8dp"
                 android:contentDescription="Fetch Calendar Events"/>
 
 

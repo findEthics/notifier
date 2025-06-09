@@ -9,7 +9,7 @@ import com.example.notifier.R
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
-class CalendarAdapter(private val events: List<CalendarEvent>) :
+class CalendarAdapter(private var events: List<CalendarEvent>) :
     RecyclerView.Adapter<CalendarAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -40,5 +40,10 @@ class CalendarAdapter(private val events: List<CalendarEvent>) :
             // Fallback for all-day events or different formats
             "All-day"
         }
+    }
+
+    fun updateData(newEvents: List<CalendarEvent>) {
+        this.events = newEvents
+        notifyDataSetChanged() // Refresh the list
     }
 }

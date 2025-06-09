@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -13,7 +14,7 @@
         android:background="@android:color/white"
         android:padding="8dp">
         <TextView
-            android:id="@+id/tvDictionaryLabel"
+            android:id="@+id/calendarTitle"
             android:layout_width="wrap_content"
             android:layout_weight="1"
             android:layout_height="match_parent"
@@ -22,6 +23,28 @@
             android:textStyle="bold"
             android:textColor="@android:color/black"
             android:gravity="start|center" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="0dp" />
+
+        <ImageButton
+            android:id="@+id/idBtnLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_login"
+            android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="Login"
+            android:padding="8dp" />
+
+        <ImageButton
+            android:id="@+id/idBtnCalendarRefresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_refresh"
+            android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="Calendar Refresh"
+            android:padding="8dp" />
 
     </LinearLayout>
 

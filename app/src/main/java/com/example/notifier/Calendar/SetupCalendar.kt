@@ -8,6 +8,7 @@ import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
 import android.widget.ImageButton
+import android.widget.Toast
 import androidx.browser.customtabs.CustomTabsIntent
 //import com.example.notifier.Calendar.GoogleApiConstants
 import com.example.notifier.GoogleApiConstants
@@ -57,29 +58,54 @@ class SetupCalendar(private val activity: Activity) {
     fun setupCalendar(btnCalendar: ImageButton) {
         btnCalendar.setOnClickListener {
             Log.d("SetupCalendar", "Calendar Button Clicked")
+
             CoroutineScope(Dispatchers.Main).launch {
                 val accessToken = getValidAccessToken()
-                println("getValidAccessToken executed")
                 if (accessToken != null) {
-                    Log.d("SetupCalendar", "Access token available. Fetching events...")
-                    fetchCalendarEvents(accessToken)
+                    // If we have a token, just fetch events and show them
+                    val events = fetchCalendarEvents(accessToken)
+                    if (events != null) {
+                        val intent = Intent(activity, CalendarActivity::class.java).apply {
+                            putParcelableArrayListExtra("EVENTS_LIST", ArrayList(events))
+                        }
+                        activity.startActivity(intent)
+                    } else {
+                        Toast.makeText(activity, "Failed to fetch events", Toast.LENGTH_SHORT).show()
+                    }
                 } else {
-                    Log.d("SetupCalendar","No valid access token. Initiating OAuth flow.")
-                    try {
-                        // This new function replaces initiateOAuthFlow
-                        val authCode = startAuthFlowAndAwaitCode()
-                        Log.d("SetupCalendar", "Successfully received auth code via loopback.")
-                        exchangeCodeForTokens(authCode.first, authCode.second)
-                    } catch (e: Exception) {
-                        Log.e("SetupCalendar", "Auth flow failed", e)
+                    // If we don't have a token, start the full login flow
+                    triggerAuthenticationFlow { events ->
+                        if (events != null) {
+                            val intent = Intent(activity, CalendarActivity::class.java).apply {
+                                putParcelableArrayListExtra("EVENTS_LIST", ArrayList(events))
+                            }
+                            activity.startActivity(intent)
+                        } else {
+                            Toast.makeText(activity, "Authentication failed", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }
         }
     }
 
+    fun triggerAuthenticationFlow(onResult: (events: List<CalendarEvent>?) -> Unit) {
+        CoroutineScope(Dispatchers.Main).launch {
+            Log.d("SetupCalendar", "Authentication flow requested.")
+            try {
+                val authResult = startAuthFlowAndAwaitCode()
+                // Pass the callback down to the next function
+                exchangeCodeForTokens(authResult.first, authResult.second, onResult)
+            } catch (e: Exception) {
+                Log.e("SetupCalendar", "Auth flow failed", e)
+                onResult(null) // Signal failure
+            }
+        }
+    }
+
     private suspend fun startAuthFlowAndAwaitCode(): Pair<String, String> = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { continuation ->
+            Log.d("SetupCalendar", "Starting authentication flow...")
             var serverSocket: ServerSocket? = null
             try {
                 // ... (Code to start the server and launch the browser is correct)
@@ -103,19 +129,19 @@ class SetupCalendar(private val activity: Activity) {
                 val clientSocket = serverSocket.accept()
                 val reader = BufferedReader(InputStreamReader(clientSocket.getInputStream()))
                 val requestLine = reader.readLine()
-                Log.d("SetupCalendar", "Received request: $requestLine")
+                Log.d("SetupCalendar", "Received request")
 
                 val response = "HTTP/1.1 200 OK\r\n\r\n<html><body>You can close this tab.</body></html>"
                 clientSocket.getOutputStream().write(response.toByteArray())
                 clientSocket.close()
 
                 val redirectPath = requestLine.split(" ")[1]
-                Log.d("SetupCalendar", "Received redirect path: $redirectPath")
+                Log.d("SetupCalendar", "Received redirect path")
                 val fullUriString = "http://localhost$redirectPath"
                 val receivedUri = Uri.parse(fullUriString)
                 val code = receivedUri.getQueryParameter("code")
                 val error = receivedUri.getQueryParameter("error")
-                Log.d("SetupCalendar", "Received code: $code")
+                Log.d("SetupCalendar", "Received code")
                 Log.d("SetupCalendar", "Received error: $error")
 
                 if (code != null) {
@@ -146,18 +172,16 @@ class SetupCalendar(private val activity: Activity) {
             putString(GoogleApiConstants.KEY_TOKEN_TYPE, tokenType)
             apply()
         }
-        Log.d("SetupCalendar", "Tokens stored. Access Token: $accessToken")
+        Log.d("SetupCalendar", "Tokens stored")
     }
 
-    private suspend fun getValidAccessToken(): String? {
-        println("getValidAccessToken started")
+    suspend fun getValidAccessToken(): String? {
+        Log.d("SetupCalendar", "getValidAccessToken called")
         val accessToken = prefs.getString(GoogleApiConstants.KEY_ACCESS_TOKEN, null)
         val expiresIn = prefs.getLong(GoogleApiConstants.KEY_EXPIRES_IN, 0)
 
-        println("${accessToken}")
-
         if (accessToken != null && System.currentTimeMillis() / 1000 < expiresIn) {
-            println("SetupCalendar , Found valid access token in Prefs.")
+            Log.d("SetupCalendar","Found valid access token in Prefs.")
             return accessToken
         } else {
             val refreshToken = prefs.getString(GoogleApiConstants.KEY_REFRESH_TOKEN, null)
@@ -170,9 +194,11 @@ class SetupCalendar(private val activity: Activity) {
         return null
     }
 
-    private suspend fun exchangeCodeForTokens(code: String, redirectUri: String) {
-        Log.d("SetupCalendar", "Exchanging authorization code for tokens...")
-        Log.d("SetupCalendar", "REDIRECT_URI: $GoogleApiConstants.REDIRECT_URI")
+    private suspend fun exchangeCodeForTokens(
+        code: String,
+        redirectUri: String,
+        onResult: (events: List<CalendarEvent>?) -> Unit
+    ) {
         val formParameters = Parameters.build {
             append("code", code)
             append("client_id", GoogleApiConstants.CLIENT_ID)
@@ -184,19 +210,22 @@ class SetupCalendar(private val activity: Activity) {
         try {
             val responseJson = makeKtorPostRequest(GoogleApiConstants.TOKEN_ENDPOINT, formParameters)
             if (responseJson != null) {
+                // (parsing and storing tokens)
                 val accessToken = responseJson.getString("access_token")
                 val refreshToken = responseJson.optString("refresh_token", null)
                 val expiresIn = responseJson.getLong("expires_in")
                 val tokenType = responseJson.getString("token_type")
 
                 storeTokens(accessToken, refreshToken, expiresIn, tokenType)
-                Log.i("SetupCalendar", "Tokens exchanged successfully. Fetching events now.")
-                fetchCalendarEvents(accessToken)
+
+                // After storing tokens, fetch the calendar events
+                val events = fetchCalendarEvents(accessToken) // fetchCalendarEvents will now return a list
+                onResult(events) // Pass the result to the callback
             } else {
-                Log.e("SetupCalendar", "Failed to exchange code for tokens: No response JSON")
+                onResult(null) // Signal failure
             }
         } catch (e: Exception) {
-            Log.e("SetupCalendar", "Error exchanging code for tokens", e)
+            onResult(null) // Signal failure
         }
     }
 
@@ -227,8 +256,8 @@ class SetupCalendar(private val activity: Activity) {
         return null
     }
 
-    private suspend fun fetchCalendarEvents(accessToken: String) {
-        Log.d("SetupCalendar", "Fetching calendar events with token: $accessToken")
+    suspend fun fetchCalendarEvents(accessToken: String): List<CalendarEvent>? {
+        Log.d("SetupCalendar", "Fetching calendar events with token")
         val calendar = Calendar.getInstance()
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
         sdf.timeZone = TimeZone.getDefault()
@@ -246,14 +275,12 @@ class SetupCalendar(private val activity: Activity) {
             .appendQueryParameter("orderBy", "startTime")
             .build().toString()
 
-        Log.d("SetupCalendar", "Fetching events from URL: $eventsUrl")
-
+        Log.d("SetupCalendar", "Fetching events from URL")
         try {
             val responseJson = makeKtorGetRequest(eventsUrl, accessToken)
             if (responseJson != null) {
                 val items = responseJson.optJSONArray("items")
-                val eventsList = ArrayList<CalendarEvent>() // Create a list for our data class
-
+                val eventsList = ArrayList<CalendarEvent>()
                 if (items != null) {
                     for (i in 0 until items.length()) {
                         val event = items.getJSONObject(i)
@@ -267,29 +294,19 @@ class SetupCalendar(private val activity: Activity) {
                         eventsList.add(CalendarEvent(summary, startTime))
                     }
                 }
-
-                // Launch the new activity on the Main thread
-                withContext(Dispatchers.Main) {
-                    val intent = Intent(activity, CalendarActivity::class.java).apply {
-                        putParcelableArrayListExtra("EVENTS_LIST", eventsList)
-                    }
-                    activity.startActivity(intent)
-                }
-
-            } else {
-                Log.e("SetupCalendar", "Failed to fetch calendar events: No response JSON")
+                return eventsList // Return the list
             }
         } catch (e: Exception) {
             Log.e("SetupCalendar", "Error fetching calendar events", e)
-            println("Error fetching events: ${e.message}")
         }
+        return null // Return null on failure
     }
 
     // Helper to make Ktor POST requests and parse to JSONObject
     private suspend fun makeKtorPostRequest(urlString: String, formParameters: Parameters): JSONObject? {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("SetupCalendar", "Ktor POST Request to URL: $urlString with params: ${formParameters.entries()}")
+                Log.d("SetupCalendar", "Ktor POST Request to URL")
                 val response: HttpResponse = httpClient.submitForm(
                     url = urlString,
                     formParameters = formParameters
@@ -305,7 +322,7 @@ class SetupCalendar(private val activity: Activity) {
                     Log.w("SetupCalendar", "Ktor POST Response body is empty.")
                     return@withContext null
                 }
-                Log.d("SetupCalendar", "Ktor POST Response: $responseBody")
+                Log.d("SetupCalendar", "Ktor POST Response Received")
                 JSONObject(responseBody) // Still using org.json for parsing for now
             } catch (e: Exception) { // Catch more specific Ktor exceptions if needed
                 Log.e("SetupCalendar", "Exception during Ktor POST request to $urlString", e)
@@ -318,7 +335,7 @@ class SetupCalendar(private val activity: Activity) {
     private suspend fun makeKtorGetRequest(urlString: String, bearerToken: String? = null): JSONObject? {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("SetupCalendar", "Ktor GET Request to URL: $urlString")
+                Log.d("SetupCalendar", "Ktor GET Request to URL")
                 val response: HttpResponse = httpClient.get(urlString) {
                     bearerToken?.let { token ->
                         header("Authorization", "Bearer $token")
@@ -335,7 +352,7 @@ class SetupCalendar(private val activity: Activity) {
                     Log.w("SetupCalendar", "Ktor GET Response body is empty.")
                     return@withContext null
                 }
-                Log.d("SetupCalendar", "Ktor GET Response: $responseBody")
+                Log.d("SetupCalendar", "Ktor GET Response received")
                 JSONObject(responseBody) // Still using org.json for parsing for now
             } catch (e: Exception) { // Catch more specific Ktor exceptions if needed
                 Log.e("SetupCalendar", "Exception during Ktor GET request to $urlString", e)
