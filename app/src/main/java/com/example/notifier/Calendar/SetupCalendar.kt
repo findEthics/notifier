@@ -119,6 +119,7 @@ class SetupCalendar(private val activity: Activity) {
                     .appendQueryParameter("response_type", "code")
                     .appendQueryParameter("scope", GoogleApiConstants.CALENDAR_API_SCOPE)
                     .appendQueryParameter("access_type", "offline")
+                    .appendQueryParameter("prompt", "select_account")
                     .build()
 
                 val customTabsIntent = CustomTabsIntent.Builder().build()
