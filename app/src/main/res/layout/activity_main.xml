@@ -30,7 +30,7 @@
             android:id="@+id/btnClear"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:srcCompat="@android:drawable/ic_menu_close_clear_cancel"
+            app:srcCompat="@android:drawable/ic_delete"
             app:fabCustomSize="68dp"
             android:contentDescription="@string/clear_all_notifications"/>
 

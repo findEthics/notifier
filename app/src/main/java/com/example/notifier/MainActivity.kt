@@ -12,13 +12,11 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.media.AudioManager
-import android.net.Uri
 import android.os.BatteryManager
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import android.widget.ImageButton
-import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -28,34 +26,18 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.spotify.android.appremote.api.ConnectionParams
-import com.spotify.android.appremote.api.Connector
 import com.spotify.android.appremote.api.SpotifyAppRemote
-import com.spotify.protocol.types.PlayerState
-import com.spotify.protocol.types.Track
-import com.spotify.sdk.android.auth.AuthorizationClient
-import com.spotify.sdk.android.auth.AuthorizationRequest
-import com.spotify.sdk.android.auth.AuthorizationResponse
 import android.media.RingtoneManager
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-
-import kotlinx.coroutines.launch
 import com.example.notifier.Calendar.SetupCalendar
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 
 class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: NotificationAdapter
-    private val CLIENT_ID = "b5954f6b7e1f44b68a9c170550ce3d10"
-    private val REDIRECT_URI = "notifier://callback"
     private var spotifyAppRemote: SpotifyAppRemote? = null
-    private var currentTrackUri: String? = null
-    private var currentContextUri: String? = null
-    private val AUTH_TOKEN_REQUEST_CODE = 0x10
     private var isMuted = false
     private var previousVolume = 0
     private var previousRingerVolume = 0
@@ -66,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private val KEY_VIBRATE_MODE = "vibrate_mode"
     private val KEY_MUTE_STATE = "mute_state"
     private lateinit var calendarSetup: SetupCalendar
+    private lateinit var spotifyManager: SpotifyManager
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -128,6 +111,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Calendar and Spotify setup
+        spotifyManager = SpotifyManager(this)
+        calendarSetup = SetupCalendar(this)
+
         createNotificationChannel()
         checkAndRequestPermissions()
 
@@ -139,15 +126,15 @@ class MainActivity : AppCompatActivity() {
         isVibrateMode = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
         isMuted = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
 
-        // Calendar setup
-//
-        calendarSetup = SetupCalendar(this)
+        // Start Spotify Auth Flow
+        spotifyManager.start()
+
+        // Setup UI
+        setupVolumeAndRingControls()
+        spotifyManager.setupSpotifyPlayerControls()
+
         val btnCalendar = findViewById<ImageButton>(R.id.btnCalendar)
         calendarSetup.setupCalendar(btnCalendar)
-
-
-        startSpotifyAuth()
-        setupSpotifyControls()
 
         val tvBattery = findViewById<TextView>(R.id.tvBattery)
         tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
@@ -185,171 +172,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-//
-        val connectionParams = ConnectionParams.Builder(CLIENT_ID)
-            .setRedirectUri(REDIRECT_URI)
-            .showAuthView(true)
-            .build()
 
-        SpotifyAppRemote.connect(this, connectionParams, object : Connector.ConnectionListener {
-            override fun onConnected(appRemote: SpotifyAppRemote) {
-                spotifyAppRemote = appRemote
-                setupSpotifyControls()
-            }
-            override fun onFailure(throwable: Throwable) {
-                throwable.printStackTrace()
-                Log.e("Spotify", "Connection failed", throwable)
-            }
-        })
+        spotifyManager.connect()
 
         val tvBattery = findViewById<TextView>(R.id.tvBattery)
         tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
     }
 
+    override fun onResume() {
+        super.onResume()
+        verifySystemState()
+    }
+
     override fun onStop() {
         super.onStop()
-        spotifyAppRemote?.let {
-            SpotifyAppRemote.disconnect(it)
-            spotifyAppRemote = null
-        }
-    }
-
-    // Setup Spotify, Volume and Ring Controls
-    private fun setupSpotifyControls() {
-        val btnPlayPause = findViewById<ImageButton>(R.id.btnPlayPause)
-        val btnPrev = findViewById<ImageButton>(R.id.btnPrev)
-        val btnNext = findViewById<ImageButton>(R.id.btnNext)
-        val tvTrack = findViewById<TextView>(R.id.tvTrack)
-        val tvArtist = findViewById<TextView>(R.id.tvArtist)
-        val ivAlbum = findViewById<ImageView>(R.id.ivAlbum)
-
-        val btnMute = findViewById<ImageButton>(R.id.btnMute)
-        val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
-
-        val clickableViews = listOf(ivAlbum, tvTrack, tvArtist)
-
-        clickableViews.forEach { view ->
-            view.setOnClickListener {
-                openInSpotify()
-            }
-        }
-
-
-        // Set Initial state of mute and Vibrate Buttons
-        fun updateRingVibrateButton() {
-            val imageRes = if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring
-            btnRingVibrate.setImageResource(imageRes)
-        }
-        updateRingVibrateButton()
-
-        fun updateMuteButton() {
-            btnMute.setImageResource(
-                if (isMuted) R.drawable.ic_mute
-                else R.drawable.ic_unmute
-            )
-        }
-        updateMuteButton()
-
-        btnRingVibrate.setOnClickListener {
-            if (isVibrateMode) {
-                // Switch back to normal ring mode
-                audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
-                audioManager.setStreamVolume(
-                    AudioManager.STREAM_RING,
-                    if (previousRingerVolume == 0) 5 else previousRingerVolume,
-                    AudioManager.FLAG_PLAY_SOUND
-                )
-            } else {
-                // Switch to vibrate mode
-                previousRingerVolume = audioManager.getStreamVolume(AudioManager.STREAM_RING)
-                audioManager.ringerMode = AudioManager.RINGER_MODE_VIBRATE
-            }
-            isVibrateMode = !isVibrateMode
-            updateRingVibrateButton()
-
-            sharedPrefs.edit().putBoolean(KEY_VIBRATE_MODE, isVibrateMode).apply() // Add persistence
-        }
-
-        btnMute.setOnClickListener {
-            if (!isMuted) {
-                // Save current volume and mute
-                previousVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
-            } else {
-                // Restore previous volume
-                audioManager.setStreamVolume(
-                    AudioManager.STREAM_MUSIC,
-                    if (previousVolume == 0) 3 else previousVolume,
-                    0)
-            }
-            isMuted = !isMuted
-            updateMuteButton()
-            sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, isMuted).apply() // Add persistence
-        }
-
-
-        // 1. Set button listeners ONCE
-        btnPlayPause.setOnClickListener {
-            spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
-                if (playerState.isPaused) {
-                    spotifyAppRemote?.playerApi?.resume()
-                } else {
-                    spotifyAppRemote?.playerApi?.pause()
-                }
-            }
-        }
-
-        btnPrev.setOnClickListener {
-            spotifyAppRemote?.playerApi?.skipPrevious()
-        }
-
-        btnNext.setOnClickListener {
-            spotifyAppRemote?.playerApi?.skipNext()
-        }
-
-        // 2. Subscribe to player state for UI updates
-        spotifyAppRemote?.playerApi?.subscribeToPlayerState()?.setEventCallback { playerState: PlayerState ->
-            val track: Track? = playerState.track
-            currentTrackUri = track?.uri // Track URI (e.g. "spotify:track:123")
-
-            if (track != null) {
-                tvTrack.text = track.name
-                tvArtist.text = track.artist.name
-                spotifyAppRemote?.imagesApi?.getImage(track.imageUri)?.setResultCallback {
-                    ivAlbum.setImageBitmap(it)
-                }
-            }
-
-            // Update play/pause button icon
-            if (playerState.isPaused) {
-                btnPlayPause.setImageResource(R.drawable.ic_play)
-            } else {
-                btnPlayPause.setImageResource(R.drawable.ic_pause)
-            }
-        }
-
-        //        for context changes
-        spotifyAppRemote?.playerApi?.subscribeToPlayerContext()?.setEventCallback { context ->
-                    currentContextUri = context.uri // Update when context changes without track change
-                }
-    }
-
-    private fun openInSpotify() {
-        val spotifyUri = currentContextUri?.takeIf { it.startsWith("spotify:playlist:") }
-            ?: currentTrackUri
-            ?: "spotify:"
-
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse(spotifyUri)
-            setPackage("com.spotify.music")
-            putExtra(Intent.EXTRA_REFERRER, Uri.parse("android-app://${packageName}"))
-        }
-
-        if (intent.resolveActivity(packageManager) != null) {
-            startActivity(intent)
-        } else {
-            Toast.makeText(this, "Spotify not installed", Toast.LENGTH_SHORT).show()
-        }
+        spotifyManager.disconnect()
     }
 
     private fun verifySystemState() {
@@ -372,11 +209,6 @@ class MainActivity : AppCompatActivity() {
             sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, actualMute).apply()
             btnMute.setImageResource(if (actualMute) R.drawable.ic_mute else R.drawable.ic_unmute)
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        verifySystemState()
     }
 
     private fun setupRecyclerView() {
@@ -456,17 +288,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver)
         super.onDestroy()
-    }
-
-    private fun startSpotifyAuth() {
-        val builder = AuthorizationRequest.Builder(
-            CLIENT_ID,
-            AuthorizationResponse.Type.TOKEN,
-            REDIRECT_URI
-        )
-        builder.setScopes(arrayOf("app-remote-control", "user-modify-playback-state", "user-read-playback-state"))
-        val request = builder.build()
-        AuthorizationClient.openLoginActivity(this, AUTH_TOKEN_REQUEST_CODE, request)
     }
 
     private fun getAppName(packageName: String): String {
@@ -554,6 +375,47 @@ class MainActivity : AppCompatActivity() {
                     .create()
                     .show()
             }
+        }
+    }
+
+    private fun setupVolumeAndRingControls() {
+        val btnMute = findViewById<ImageButton>(R.id.btnMute)
+        val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
+
+        fun updateRingVibrateButton() {
+            val imageRes = if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring
+            btnRingVibrate.setImageResource(imageRes)
+        }
+        updateRingVibrateButton()
+
+        fun updateMuteButton() {
+            btnMute.setImageResource(if (isMuted) R.drawable.ic_mute else R.drawable.ic_unmute)
+        }
+        updateMuteButton()
+
+        btnRingVibrate.setOnClickListener {
+            if (isVibrateMode) {
+                audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                audioManager.setStreamVolume(AudioManager.STREAM_RING, if (previousRingerVolume == 0) 5 else previousRingerVolume, AudioManager.FLAG_PLAY_SOUND)
+            } else {
+                previousRingerVolume = audioManager.getStreamVolume(AudioManager.STREAM_RING)
+                audioManager.ringerMode = AudioManager.RINGER_MODE_VIBRATE
+            }
+            isVibrateMode = !isVibrateMode
+            updateRingVibrateButton()
+            sharedPrefs.edit().putBoolean(KEY_VIBRATE_MODE, isVibrateMode).apply()
+        }
+
+        btnMute.setOnClickListener {
+            if (!isMuted) {
+                previousVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+            } else {
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, if (previousVolume == 0) 3 else previousVolume, 0)
+            }
+            isMuted = !isMuted
+            updateMuteButton()
+            sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, isMuted).apply()
         }
     }
 
