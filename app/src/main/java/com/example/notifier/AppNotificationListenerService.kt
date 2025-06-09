@@ -14,6 +14,9 @@ class AppNotificationListenerService : NotificationListenerService() {
         "com.whatsapp","com.mudita.messages","com.mudita.calendar","com.example.notifier"
         // Only listen for notifications from these apps
     )
+    private val ignoreNotification = setOf(
+        "Ringing…","Calling…"
+    )
     private val seenKeys = mutableSetOf<String>()
     private val summaryKeys = mutableMapOf<String, String>() // Group ID → Latest Key
     private val activeNotifications = mutableMapOf<String, StatusBarNotification>()
@@ -27,7 +30,7 @@ class AppNotificationListenerService : NotificationListenerService() {
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
-        Log.d("NotificationListenerService", "Received notification from ${sbn.packageName}: $title - $text, $extras")
+        Log.d("NotificationListenerService", "Received notification from ${sbn.packageName}")
 
         if (sbn.packageName != "com.example.notifier") {
             if (title.isEmpty() || text.isEmpty() || !(extras.containsKey("android.template"))) {
@@ -43,8 +46,18 @@ class AppNotificationListenerService : NotificationListenerService() {
             return
         }
 
+        if ((sbn.packageName == "com.whatsapp") && (text in ignoreNotification)) {
+            Log.d("NotificationListenerService", "Ignoring call notification from ${sbn.packageName}")
+            cancelNotification(sbn.key)
+            return
+        }
+
         val isGroupSummary = extras.getBoolean("android.support.isGroupSummary", false)
-        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${sbn.postTime}".sha256() // Create unique key
+        var postTimeProxy = sbn.postTime
+        if (text == "Incoming voice call" && sbn.packageName == "com.whatsapp") {
+            postTimeProxy = sbn.postTime/100000
+        }
+        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${postTimeProxy}".sha256() // Create unique key
         activeNotifications[contentKey] = sbn
         if (!isGroupSummary && contentKey in seenKeys) return // Skip already seen individual notifications (avoid duplicates)
 
@@ -131,8 +144,13 @@ class AppNotificationListenerService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""
+        val text = extras.getString("android.text") ?: ""
+        var postTimeProxy = sbn.postTime
+        if (text == "Incoming voice call" && sbn.packageName == "com.whatsapp") {
+            postTimeProxy = sbn.postTime/100000
+        }
 
-        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${sbn.postTime}".sha256() // Create unique key
+        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${postTimeProxy}".sha256() // Create unique key
         cancelNotification(sbn.key)
         activeNotifications.remove(contentKey)
 
