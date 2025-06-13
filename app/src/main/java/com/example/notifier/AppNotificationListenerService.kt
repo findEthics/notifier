@@ -1,5 +1,5 @@
 package com.example.notifier
-import java.security.MessageDigest
+
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -57,7 +57,8 @@ class AppNotificationListenerService : NotificationListenerService() {
         if (text == "Incoming voice call" && sbn.packageName == "com.whatsapp") {
             postTimeProxy = sbn.postTime/100000
         }
-        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${postTimeProxy}".sha256() // Create unique key
+        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${postTimeProxy}" // Create unique key
+
         activeNotifications[contentKey] = sbn
         if (!isGroupSummary && contentKey in seenKeys) return // Skip already seen individual notifications (avoid duplicates)
 
@@ -67,7 +68,7 @@ class AppNotificationListenerService : NotificationListenerService() {
         if (isGroupSummary || isWhatsAppSummary) {
             // Check if we already have a summary for this package
             val groupId = sbn.notification.group ?: "default_group"
-            val newSummaryKey = "SUMMARY|${sbn.packageName}|$groupId|${sbn.postTime}".sha256()
+            val newSummaryKey = "SUMMARY|${sbn.packageName}|$groupId|${sbn.postTime}"
 
             // Remove previous summary for this group
             summaryKeys[sbn.packageName]?.let { oldKey ->
@@ -133,8 +134,8 @@ class AppNotificationListenerService : NotificationListenerService() {
 
     override fun onCreate() {
         super.onCreate()
-        LocalBroadcastManager.getInstance(this)
-            .registerReceiver(refreshReceiver, IntentFilter("FORCE_REFRESH"))
+//        LocalBroadcastManager.getInstance(this)
+//            .registerReceiver(refreshReceiver, IntentFilter("FORCE_REFRESH"))
         LocalBroadcastManager.getInstance(this)
             .registerReceiver(cancelReceiver, IntentFilter("CANCEL_NOTIFICATION"))
         LocalBroadcastManager.getInstance(this)
@@ -150,63 +151,61 @@ class AppNotificationListenerService : NotificationListenerService() {
             postTimeProxy = sbn.postTime/100000
         }
 
-        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${postTimeProxy}".sha256() // Create unique key
+        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${postTimeProxy}" // Create unique key
+
         cancelNotification(sbn.key)
         activeNotifications.remove(contentKey)
 
     }
 
-    private val refreshReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == "FORCE_REFRESH") {
-                forceRefreshNotifications()
-            }
-        }
-    }
+//    private val refreshReceiver = object : BroadcastReceiver() {
+//        override fun onReceive(context: Context, intent: Intent) {
+//            if (intent.action == "FORCE_REFRESH") {
+//                forceRefreshNotifications()
+//            }
+//        }
+//    }
 
-    private fun forceRefreshNotifications() {
-        try {
-            // Get current system notifications
-            val currentSystemNotifications = getActiveNotifications()?.toList() ?: emptyList()
-
-            // 1. Remove local notifications not in system
-            activeNotifications.keys.toList().forEach { key ->
-                if (currentSystemNotifications.none { generateKey(it) == key }) {
-                    LocalBroadcastManager.getInstance(this).sendBroadcast(
-                        Intent("REMOVE_NOTIFICATION").apply {
-                            putExtra("key", key)
-                        }
-                    )
-                }
-            }
-
-            // 2. Add/update existing system notifications
-            currentSystemNotifications.forEach { sbn ->
-                if (sbn.packageName in allowedPackages) {
-                    onNotificationPosted(sbn) // Re-process valid notifications
-                } else {
-                    cancelNotification(sbn.key)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("NotificationService", "Force refresh failed", e)
-        }
-    }
+//    private fun forceRefreshNotifications() {
+//        Log.d("NotificationListenerService", "Force refresh triggered")
+//        try {
+//            // Get current system notifications
+//            val currentSystemNotifications = getActiveNotifications()?.toList() ?: emptyList()
+//
+//            // 1. Remove local notifications not in system
+//            activeNotifications.keys.toList().forEach { key ->
+//                println("{key}")
+//                Log.d("NotificationListenerService", "Checking key Force Refresh: $key")
+//                if (currentSystemNotifications.none { generateKey(it) == key }) {
+//                    LocalBroadcastManager.getInstance(this).sendBroadcast(
+//                        Intent("REMOVE_NOTIFICATION").apply {
+//                            putExtra("key", key)
+//                        }
+//                    )
+//                }
+//            }
+//
+//            // 2. Add/update existing system notifications
+//            currentSystemNotifications.forEach { sbn ->
+//                if (sbn.packageName in allowedPackages) {
+//                    onNotificationPosted(sbn) // Re-process valid notifications
+//                } else {
+//                    cancelNotification(sbn.key)
+//                }
+//            }
+//        } catch (e: Exception) {
+//            Log.e("NotificationService", "Force refresh failed", e)
+//        }
+//    }
 
     override fun onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(cancelReceiver)
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(refreshReceiver)
+//        LocalBroadcastManager.getInstance(this).unregisterReceiver(refreshReceiver)
         super.onDestroy()
     }
 
-    fun String.sha256(): String {
-        return MessageDigest.getInstance("SHA-256")
-            .digest(this.toByteArray())
-            .fold("") { str, byte -> str + "%02x".format(byte) }
-    }
-
-    private fun generateKey(sbn: StatusBarNotification): String {
-        return "${sbn.packageName}|${sbn.id}|${sbn.notification.extras.getString("android.title")}|${sbn.postTime}".sha256()
-    }
+//    private fun generateKey(sbn: StatusBarNotification): String {
+//        return "${sbn.packageName}|${sbn.id}|${sbn.notification.extras.getString("android.title")}|${sbn.postTime}"
+//    }
 
 }

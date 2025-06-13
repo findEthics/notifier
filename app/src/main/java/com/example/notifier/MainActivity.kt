@@ -28,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.spotify.android.appremote.api.SpotifyAppRemote
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -37,7 +38,6 @@ class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: NotificationAdapter
-    private var spotifyAppRemote: SpotifyAppRemote? = null
     private var isMuted = false
     private var previousVolume = 0
     private var previousRingerVolume = 0
@@ -139,19 +139,9 @@ class MainActivity : AppCompatActivity() {
         val tvBattery = findViewById<TextView>(R.id.tvBattery)
         tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
 
-        // Clear button setup
-        val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
-        btnClear.setOnClickListener {
-            notifications.clear()
-            adapter.notifyDataSetChanged()
-        }
-        //Refresh button setup
-        val fabRefresh = findViewById<FloatingActionButton>(R.id.fabRefresh)
-        fabRefresh.setOnClickListener {
-            // Send a broadcast to your NotificationListenerService to trigger a refresh
-            val refreshIntent = Intent("FORCE_REFRESH")
-            LocalBroadcastManager.getInstance(this).sendBroadcast(refreshIntent)
-        }
+        // Setup action button listeners
+        setupActionButtonListeners()
+
 
         if (!isNotificationServiceEnabled()) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -168,6 +158,100 @@ class MainActivity : AppCompatActivity() {
         }
         LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter)
 
+    }
+
+    private fun setupActionButtonListeners() {
+        // Clear button setup
+        val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
+        btnClear.setOnClickListener {
+            notifications.clear()
+            adapter.notifyDataSetChanged()
+        }
+        //WhatsApp button setup
+        val openWhatsApp = findViewById<FloatingActionButton>(R.id.btnWhatsApp)
+        openWhatsApp.setOnClickListener {
+            // Open WhatsApp
+            try {
+                val intent = packageManager.getLaunchIntentForPackage("com.whatsapp")
+                if (intent == null) {
+                    // WhatsApp not found, open default messaging app
+                    val defaultSmsIntent = Intent(Intent.ACTION_MAIN)
+                    defaultSmsIntent.addCategory(Intent.CATEGORY_APP_MESSAGING)
+                    startActivity(defaultSmsIntent)
+                    Toast.makeText(this, "WhatsApp not found, opening default messaging app", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "WhatsApp not found", Toast.LENGTH_SHORT).show()
+            }
+        }
+        //Assistant button setup
+        val openAssistant = findViewById<FloatingActionButton>(R.id.btnAssistant)
+        openAssistant.setOnClickListener {
+            // Open Claude Assistant
+            Log.d("MainActivity", "Attempting to open assistant...")
+            try {
+                val claudeIntent = packageManager.getLaunchIntentForPackage("com.anthropic.claude")
+                if (claudeIntent != null) {
+                    Log.d("MainActivity", "Claude app found. Launching...")
+                    startActivity(claudeIntent)
+                } else {
+                    Log.d("MainActivity", "Claude app not found. Trying default assistant.")
+                    // Try to open the default voice assistant
+                    val defaultAssistantIntent = Intent(Intent.ACTION_VOICE_COMMAND)
+                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    if (defaultAssistantIntent.resolveActivity(packageManager) != null) {
+                        Log.d("MainActivity", "Default assistant found. Launching...")
+                        startActivity(defaultAssistantIntent)
+                    } else {
+                        Log.d("MainActivity", "No default assistant found. Trying default browser.")
+                        // Try to open the default browser as a last resort
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com")).apply {
+                            // Ensure the intent can be handled by a browser
+                            addCategory(Intent.CATEGORY_BROWSABLE)
+                        }
+                        if (browserIntent.resolveActivity(packageManager) != null) {
+                            Log.d("MainActivity", "Default browser found. Launching...")
+                            startActivity(browserIntent)
+                        } else {
+                            Log.w("MainActivity", "No suitable app found to handle assistant request (Claude, Default Assistant, Browser).")
+                            Toast.makeText(this, "No assistant or browser app found", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error opening assistant", e)
+                Toast.makeText(this, "Error opening assistant", Toast.LENGTH_SHORT).show()
+            }
+        }
+        //Maps button setup
+        val openMaps = findViewById<FloatingActionButton>(R.id.btnMaps)
+        openMaps.setOnClickListener {
+            try {
+                val intentGmapsWV = packageManager.getLaunchIntentForPackage("us.spotco.maps")
+                val intentMuditaMaps = packageManager.getLaunchIntentForPackage("com.mudita.maps")
+                val intentGoogleMaps = packageManager.getLaunchIntentForPackage("com.google.android.apps.maps")
+                if (intentGmapsWV != null) {
+                    startActivity(intentGmapsWV)
+                } else if (intentMuditaMaps != null) {
+                    startActivity(intentMuditaMaps)
+                } else if (intentGoogleMaps != null) {
+                    startActivity(intentGoogleMaps)
+                } else {
+                    // Try to open Google Maps in the default browser
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com"))
+                    if (browserIntent.resolveActivity(packageManager) != null) {
+                        startActivity(browserIntent)
+                    } else {
+                        Toast.makeText(this, "No Map apps or browser found", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: PackageManager.NameNotFoundException) {
+                // App not installed
+                Toast.makeText(this, "No Map apps found", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onStart() {

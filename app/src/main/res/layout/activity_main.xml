@@ -9,22 +9,57 @@
 
     <include layout="@layout/content_main" />
 
-    <LinearLayout
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="8dp">
+        android:layout_gravity="bottom"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp"> <!-- Added a bit more bottom padding for aesthetics -->
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fabRefresh"
+            android:id="@+id/btnMaps"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:src="@drawable/ic_refresh"
-            android:contentDescription="Refresh Notifications"
-            android:layout_marginEnd="20dp"
-            android:layout_marginBottom="20dp"
-            app:fabCustomSize="68dp"/>
+            android:src="@drawable/ic_maps"
+            app:tint="@android:color/black"
+            android:contentDescription="Open Maps"
+            app:fabCustomSize="68dp"
+            app:backgroundTint="@android:color/white"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/btnAssistant"
+            app:layout_constraintHorizontal_chainStyle="spread_inside"/>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnAssistant"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_assistant"
+            app:tint="@android:color/black"
+            android:contentDescription="Open Assistant"
+            app:fabCustomSize="68dp"
+            app:backgroundTint="@android:color/white"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/btnMaps"
+            app:layout_constraintEnd_toStartOf="@+id/btnWhatsApp"/>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnWhatsApp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_whatsapp"
+            app:tint="@android:color/black"
+            android:contentDescription="Open Whatsapp"
+            app:fabCustomSize="68dp"
+            app:backgroundTint="@android:color/white"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/btnAssistant"
+            app:layout_constraintEnd_toStartOf="@+id/btnClear"/>
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/btnClear"
@@ -32,9 +67,14 @@
             android:layout_height="wrap_content"
             app:srcCompat="@android:drawable/ic_delete"
             app:fabCustomSize="68dp"
-            android:contentDescription="@string/clear_all_notifications"/>
+            android:contentDescription="@string/clear_all_notifications"
+            app:backgroundTint="@android:color/white"
+            app:tint="@android:color/black"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/btnWhatsApp"
+            app:layout_constraintEnd_toEndOf="parent"/>
 
-
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
