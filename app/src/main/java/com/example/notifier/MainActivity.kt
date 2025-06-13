@@ -139,6 +139,28 @@ class MainActivity : AppCompatActivity() {
         val tvBattery = findViewById<TextView>(R.id.tvBattery)
         tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
 
+        // Setup action button listeners
+        setupActionButtonListeners()
+
+
+        if (!isNotificationServiceEnabled()) {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+
+
+
+        setupRecyclerView()
+        setupSwipeToDelete()
+
+        val filter = IntentFilter().apply {
+            addAction("NEW_NOTIFICATION")
+            addAction("REMOVE_NOTIFICATION")
+        }
+        LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter)
+
+    }
+
+    private fun setupActionButtonListeners() {
         // Clear button setup
         val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
         btnClear.setOnClickListener {
@@ -164,7 +186,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "WhatsApp not found", Toast.LENGTH_SHORT).show()
             }
         }
-
+        //Assistant button setup
         val openAssistant = findViewById<FloatingActionButton>(R.id.btnAssistant)
         openAssistant.setOnClickListener {
             // Open Claude Assistant
@@ -203,7 +225,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Error opening assistant", Toast.LENGTH_SHORT).show()
             }
         }
-//
+        //Maps button setup
         val openMaps = findViewById<FloatingActionButton>(R.id.btnMaps)
         openMaps.setOnClickListener {
             try {
@@ -230,22 +252,6 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "No Map apps found", Toast.LENGTH_SHORT).show()
             }
         }
-
-        if (!isNotificationServiceEnabled()) {
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        }
-
-
-
-        setupRecyclerView()
-        setupSwipeToDelete()
-
-        val filter = IntentFilter().apply {
-            addAction("NEW_NOTIFICATION")
-            addAction("REMOVE_NOTIFICATION")
-        }
-        LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter)
-
     }
 
     override fun onStart() {
