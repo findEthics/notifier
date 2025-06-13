@@ -36,7 +36,7 @@ The app requires the following permissions:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/notifier.git
+git clone https://github.com/findEthics/notifier.git
 cd notifier
 ```
 
