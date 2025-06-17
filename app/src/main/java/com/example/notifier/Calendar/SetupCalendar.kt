@@ -57,32 +57,36 @@ class SetupCalendar(private val activity: Activity) {
 
     fun setupCalendar(btnCalendar: ImageButton) {
         btnCalendar.setOnClickListener {
-            Log.d("SetupCalendar", "Calendar Button Clicked")
+            handleCalendarButtonClick()
+        }
+    }
 
-            CoroutineScope(Dispatchers.Main).launch {
-                val accessToken = getValidAccessToken()
-                if (accessToken != null) {
-                    // If we have a token, just fetch events and show them
-                    val events = fetchCalendarEvents(accessToken)
+    fun handleCalendarButtonClick() {
+        Log.d("SetupCalendar", "Calendar Button Clicked")
+
+        CoroutineScope(Dispatchers.Main).launch {
+            val accessToken = getValidAccessToken()
+            if (accessToken != null) {
+                // If we have a token, just fetch events and show them
+                val events = fetchCalendarEvents(accessToken)
+                if (events != null) {
+                    val intent = Intent(activity, CalendarActivity::class.java).apply {
+                        putParcelableArrayListExtra("EVENTS_LIST", ArrayList(events))
+                    }
+                    activity.startActivity(intent)
+                } else {
+                    Toast.makeText(activity, "Failed to fetch events", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                // If we don't have a token, start the full login flow
+                triggerAuthenticationFlow { events ->
                     if (events != null) {
                         val intent = Intent(activity, CalendarActivity::class.java).apply {
                             putParcelableArrayListExtra("EVENTS_LIST", ArrayList(events))
                         }
                         activity.startActivity(intent)
                     } else {
-                        Toast.makeText(activity, "Failed to fetch events", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    // If we don't have a token, start the full login flow
-                    triggerAuthenticationFlow { events ->
-                        if (events != null) {
-                            val intent = Intent(activity, CalendarActivity::class.java).apply {
-                                putParcelableArrayListExtra("EVENTS_LIST", ArrayList(events))
-                            }
-                            activity.startActivity(intent)
-                        } else {
-                            Toast.makeText(activity, "Authentication failed", Toast.LENGTH_SHORT).show()
-                        }
+                        Toast.makeText(activity, "Authentication failed", Toast.LENGTH_SHORT).show()
                     }
                 }
             }

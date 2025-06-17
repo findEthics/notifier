@@ -15,7 +15,6 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.ImageButton
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -23,9 +22,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.spotify.android.appremote.api.SpotifyAppRemote
 import android.media.RingtoneManager
-import android.net.Uri
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -44,7 +41,7 @@ class MainActivity : AppCompatActivity() {
     private val PREFS_NAME = "AppSettings"
     private val KEY_VIBRATE_MODE = "vibrate_mode"
     private val KEY_MUTE_STATE = "mute_state"
-    private lateinit var calendarSetup: SetupCalendar
+    private var calendarSetup: SetupCalendar? = null
     private lateinit var spotifyManager: SpotifyManager
 
     private val receiver = object : BroadcastReceiver() {
@@ -106,9 +103,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Calendar and Spotify setup
+        // Spotify setup
         spotifyManager = SpotifyManager(this)
-        calendarSetup = SetupCalendar(this)
 
         createNotificationChannel()
         checkAndRequestPermissions()
@@ -129,7 +125,7 @@ class MainActivity : AppCompatActivity() {
         spotifyManager.setupSpotifyPlayerControls()
 
         val btnCalendar = findViewById<ImageButton>(R.id.btnCalendar)
-        calendarSetup.setupCalendar(btnCalendar)
+        setupCalendarButton(btnCalendar)
         // Setup action button listeners
         setupActionButtonListeners()
 
@@ -315,6 +311,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver)
+        calendarSetup?.cleanup()
         super.onDestroy()
     }
 
@@ -436,6 +433,16 @@ class MainActivity : AppCompatActivity() {
             isMuted = !isMuted
             updateMuteButton()
             sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, isMuted).apply()
+        }
+    }
+
+    private fun setupCalendarButton(btnCalendar: ImageButton) {
+        btnCalendar.setOnClickListener {
+            // Lazy initialization - only create CalendarSetup when button is clicked
+            if (calendarSetup == null) {
+                calendarSetup = SetupCalendar(this)
+            }
+            calendarSetup?.handleCalendarButtonClick()
         }
     }
 
