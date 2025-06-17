@@ -12,10 +12,8 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.media.AudioManager
-import android.os.BatteryManager
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
@@ -25,7 +23,6 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.spotify.android.appremote.api.SpotifyAppRemote
 import android.media.RingtoneManager
 import android.net.Uri
@@ -98,11 +95,9 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) {
                 // Permission is granted. You can now post notifications.
-                Log.d("Permissions", "POST_NOTIFICATIONS permission granted.")
                 checkAndRequestExactAlarmPermission() // Chain to the next permission check
             } else {
                 // Explain to the user that the feature is unavailable
-                Log.w("Permissions", "POST_NOTIFICATIONS permission denied.")
                 Toast.makeText(this, "Notification permission denied. Reminders will not work.", Toast.LENGTH_LONG).show()
             }
         }
@@ -135,19 +130,12 @@ class MainActivity : AppCompatActivity() {
 
         val btnCalendar = findViewById<ImageButton>(R.id.btnCalendar)
         calendarSetup.setupCalendar(btnCalendar)
-
-        val tvBattery = findViewById<TextView>(R.id.tvBattery)
-        tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
-
         // Setup action button listeners
         setupActionButtonListeners()
-
 
         if (!isNotificationServiceEnabled()) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
-
-
 
         setupRecyclerView()
         setupSwipeToDelete()
@@ -162,23 +150,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupActionButtonListeners() {
         // Clear button setup
-        val btnClear = findViewById<FloatingActionButton>(R.id.btnClear)
+        val btnClear = findViewById<ImageButton>(R.id.btnClear)
         btnClear.setOnClickListener {
             notifications.clear()
             adapter.notifyDataSetChanged()
         }
         //WhatsApp button setup
-        val openWhatsApp = findViewById<FloatingActionButton>(R.id.btnWhatsApp)
+        val openWhatsApp = findViewById<ImageButton>(R.id.btnWhatsApp)
         openWhatsApp.setOnClickListener {
             // Open WhatsApp
             try {
                 val intent = packageManager.getLaunchIntentForPackage("com.whatsapp")
                 if (intent == null) {
-                    // WhatsApp not found, open default messaging app
-                    val defaultSmsIntent = Intent(Intent.ACTION_MAIN)
-                    defaultSmsIntent.addCategory(Intent.CATEGORY_APP_MESSAGING)
-                    startActivity(defaultSmsIntent)
-                    Toast.makeText(this, "WhatsApp not found, opening default messaging app", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "WhatsApp not found", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
                 startActivity(intent)
@@ -187,80 +171,40 @@ class MainActivity : AppCompatActivity() {
             }
         }
         //Assistant button setup
-        val openAssistant = findViewById<FloatingActionButton>(R.id.btnAssistant)
+        val openAssistant = findViewById<ImageButton>(R.id.btnAssistant)
         openAssistant.setOnClickListener {
             // Open Claude Assistant
-            Log.d("MainActivity", "Attempting to open assistant...")
             try {
                 val claudeIntent = packageManager.getLaunchIntentForPackage("com.anthropic.claude")
                 if (claudeIntent != null) {
-                    Log.d("MainActivity", "Claude app found. Launching...")
                     startActivity(claudeIntent)
                 } else {
-                    Log.d("MainActivity", "Claude app not found. Trying default assistant.")
-                    // Try to open the default voice assistant
-                    val defaultAssistantIntent = Intent(Intent.ACTION_VOICE_COMMAND)
-                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    if (defaultAssistantIntent.resolveActivity(packageManager) != null) {
-                        Log.d("MainActivity", "Default assistant found. Launching...")
-                        startActivity(defaultAssistantIntent)
-                    } else {
-                        Log.d("MainActivity", "No default assistant found. Trying default browser.")
-                        // Try to open the default browser as a last resort
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com")).apply {
-                            // Ensure the intent can be handled by a browser
-                            addCategory(Intent.CATEGORY_BROWSABLE)
-                        }
-                        if (browserIntent.resolveActivity(packageManager) != null) {
-                            Log.d("MainActivity", "Default browser found. Launching...")
-                            startActivity(browserIntent)
-                        } else {
-                            Log.w("MainActivity", "No suitable app found to handle assistant request (Claude, Default Assistant, Browser).")
-                            Toast.makeText(this, "No assistant or browser app found", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    Toast.makeText(this, "No assistant or browser app found", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.e("MainActivity", "Error opening assistant", e)
                 Toast.makeText(this, "Error opening assistant", Toast.LENGTH_SHORT).show()
             }
         }
         //Maps button setup
-        val openMaps = findViewById<FloatingActionButton>(R.id.btnMaps)
+        val openMaps = findViewById<ImageButton>(R.id.btnMaps)
         openMaps.setOnClickListener {
             try {
                 val intentGmapsWV = packageManager.getLaunchIntentForPackage("us.spotco.maps")
-                val intentMuditaMaps = packageManager.getLaunchIntentForPackage("com.mudita.maps")
-                val intentGoogleMaps = packageManager.getLaunchIntentForPackage("com.google.android.apps.maps")
                 if (intentGmapsWV != null) {
                     startActivity(intentGmapsWV)
-                } else if (intentMuditaMaps != null) {
-                    startActivity(intentMuditaMaps)
-                } else if (intentGoogleMaps != null) {
-                    startActivity(intentGoogleMaps)
-                } else {
-                    // Try to open Google Maps in the default browser
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com"))
-                    if (browserIntent.resolveActivity(packageManager) != null) {
-                        startActivity(browserIntent)
-                    } else {
+                }
+                    else {
                         Toast.makeText(this, "No Map apps or browser found", Toast.LENGTH_SHORT).show()
                     }
-                }
             } catch (e: PackageManager.NameNotFoundException) {
-                // App not installed
-                Toast.makeText(this, "No Map apps found", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "No Map app found", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     override fun onStart() {
         super.onStart()
-
-        spotifyManager.connect()
-
-        val tvBattery = findViewById<TextView>(R.id.tvBattery)
-        tvBattery.text = getString(R.string.battery_status, getBatteryPercentage(this))
+        // Spotify will connect only when user interacts with controls
     }
 
     override fun onResume() {
@@ -384,13 +328,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getBatteryPercentage(context: Context): Int {
-        val ifilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        val batteryStatus: Intent? = context.registerReceiver(null, ifilter)
-        val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-        return if (level >= 0 && scale > 0) (level * 100 / scale) else 0
-    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -416,7 +353,6 @@ class MainActivity : AppCompatActivity() {
                     Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED -> {
                     // Permission is already granted
-                    Log.d("Permissions", "POST_NOTIFICATIONS permission already granted.")
                     checkAndRequestExactAlarmPermission() // Check next permission
                 }
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {

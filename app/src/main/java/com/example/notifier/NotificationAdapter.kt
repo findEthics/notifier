@@ -45,7 +45,11 @@ class NotificationAdapter(
         if (item.appName == "Calendar") {
             titleText = "${item.appName}: ${item.title} $timeString"
             boldEndIndex = item.appName.length + 1 // Include the colon and space
-        } else {
+          } else if (item.appName == "Notifier") {
+            titleText = item.title
+            boldEndIndex = item.title.length // Nothing to bold specifically from appName
+        }
+        else {
             titleText = "${item.title} $timeString"
             boldEndIndex = item.title.length // Nothing to bold specifically from appName
         }

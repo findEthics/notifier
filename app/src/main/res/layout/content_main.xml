@@ -73,39 +73,17 @@
 
     </LinearLayout>
 
-    <!-- Volume Controls -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/volume_controls"
+    <!-- Control Buttons -->
+    <LinearLayout
+        android:id="@+id/control_buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
         android:padding="8dp"
         app:layout_constraintTop_toBottomOf="@id/spotify_controls"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
-
-        <!-- Battery indicator on the left -->
-        <TextView
-            android:id="@+id/tvBattery"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🔋100%"
-            android:textStyle="bold"
-            android:textSize="18sp"
-            android:textColor="@android:color/black"
-            android:gravity="center_vertical"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"/>
-
-        <!-- Button group on the right -->
-        <LinearLayout
-            android:id="@+id/volume_button_group"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent">
 
             <ImageButton
                 android:id="@+id/btnMute"
@@ -135,8 +113,7 @@
                 android:contentDescription="Fetch Calendar Events"/>
 
 
-        </LinearLayout>
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 
 
 
@@ -144,7 +121,7 @@
         android:id="@+id/recyclerView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/volume_controls"
+        app:layout_constraintTop_toBottomOf="@id/control_buttons"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>

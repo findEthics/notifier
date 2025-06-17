@@ -35,6 +35,8 @@ class SpotifyManager(private val activity: Activity) {
     }
 
     fun connect() {
+        if (spotifyAppRemote != null) return // Already connected
+        
         val connectionParams = ConnectionParams.Builder(CLIENT_ID)
             .setRedirectUri(REDIRECT_URI)
             .showAuthView(true)
@@ -71,12 +73,19 @@ class SpotifyManager(private val activity: Activity) {
         AuthorizationClient.openLoginActivity(activity, AUTH_TOKEN_REQUEST_CODE, request)
     }
 
+    fun connectIfNeeded() {
+        if (spotifyAppRemote == null) {
+            connect()
+        }
+    }
+
     fun setupSpotifyPlayerControls() {
         val btnPlayPause = activity.findViewById<ImageButton>(R.id.btnPlayPause)
         val btnPrev = activity.findViewById<ImageButton>(R.id.btnPrev)
         val btnNext = activity.findViewById<ImageButton>(R.id.btnNext)
 
         btnPlayPause.setOnClickListener {
+            connectIfNeeded()
             spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
                 if (playerState.isPaused) {
                     spotifyAppRemote?.playerApi?.resume()
@@ -86,8 +95,14 @@ class SpotifyManager(private val activity: Activity) {
             }
         }
 
-        btnPrev.setOnClickListener { spotifyAppRemote?.playerApi?.skipPrevious() }
-        btnNext.setOnClickListener { spotifyAppRemote?.playerApi?.skipNext() }
+        btnPrev.setOnClickListener { 
+            connectIfNeeded()
+            spotifyAppRemote?.playerApi?.skipPrevious() 
+        }
+        btnNext.setOnClickListener { 
+            connectIfNeeded()
+            spotifyAppRemote?.playerApi?.skipNext() 
+        }
 
         // Setup click listeners for album art/text to open Spotify
         val tvTrack = activity.findViewById<TextView>(R.id.tvTrack)
@@ -96,6 +111,7 @@ class SpotifyManager(private val activity: Activity) {
         val clickableViews = listOf(ivAlbum, tvTrack, tvArtist)
         clickableViews.forEach { view ->
             view.setOnClickListener {
+                connectIfNeeded()
                 openInSpotify()
             }
         }
