@@ -183,7 +183,7 @@ class MainActivity : AppCompatActivity() {
         val openMaps = findViewById<ImageButton>(R.id.btnMaps)
         openMaps.setOnClickListener {
             try {
-                val intentGmapsWV = packageManager.getLaunchIntentForPackage("us.spotco.maps")
+                val intentGmapsWV = packageManager.getLaunchIntentForPackage("com.google.android.apps.mapslite")
                 if (intentGmapsWV != null) {
                     startActivity(intentGmapsWV)
                 }
