@@ -85,23 +85,14 @@ class SpotifyManager(private val activity: Activity) {
         val btnNext = activity.findViewById<ImageButton>(R.id.btnNext)
 
         btnPlayPause.setOnClickListener {
-            connectIfNeeded()
-            spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
-                if (playerState.isPaused) {
-                    spotifyAppRemote?.playerApi?.resume()
-                } else {
-                    spotifyAppRemote?.playerApi?.pause()
-                }
-            }
+            handlePlayPauseClick()
         }
 
         btnPrev.setOnClickListener { 
-            connectIfNeeded()
-            spotifyAppRemote?.playerApi?.skipPrevious() 
+            handlePreviousClick()
         }
         btnNext.setOnClickListener { 
-            connectIfNeeded()
-            spotifyAppRemote?.playerApi?.skipNext() 
+            handleNextClick()
         }
 
         // Setup click listeners for album art/text to open Spotify
@@ -111,10 +102,35 @@ class SpotifyManager(private val activity: Activity) {
         val clickableViews = listOf(ivAlbum, tvTrack, tvArtist)
         clickableViews.forEach { view ->
             view.setOnClickListener {
-                connectIfNeeded()
-                openInSpotify()
+                handleSpotifyAppClick()
             }
         }
+    }
+
+    fun handlePlayPauseClick() {
+        connectIfNeeded()
+        spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
+            if (playerState.isPaused) {
+                spotifyAppRemote?.playerApi?.resume()
+            } else {
+                spotifyAppRemote?.playerApi?.pause()
+            }
+        }
+    }
+
+    fun handlePreviousClick() {
+        connectIfNeeded()
+        spotifyAppRemote?.playerApi?.skipPrevious()
+    }
+
+    fun handleNextClick() {
+        connectIfNeeded()
+        spotifyAppRemote?.playerApi?.skipNext()
+    }
+
+    fun handleSpotifyAppClick() {
+        connectIfNeeded()
+        openInSpotify()
     }
 
 

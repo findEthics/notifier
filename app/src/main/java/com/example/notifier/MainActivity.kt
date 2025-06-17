@@ -15,6 +15,8 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -42,7 +44,7 @@ class MainActivity : AppCompatActivity() {
     private val KEY_VIBRATE_MODE = "vibrate_mode"
     private val KEY_MUTE_STATE = "mute_state"
     private var calendarSetup: SetupCalendar? = null
-    private lateinit var spotifyManager: SpotifyManager
+    private var spotifyManager: SpotifyManager? = null
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -103,8 +105,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Spotify setup
-        spotifyManager = SpotifyManager(this)
+        // Spotify will be setup lazily when user interacts with controls
 
         createNotificationChannel()
         checkAndRequestPermissions()
@@ -117,12 +118,9 @@ class MainActivity : AppCompatActivity() {
         isVibrateMode = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
         isMuted = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
 
-        // Start Spotify Auth Flow
-        spotifyManager.start()
-
         // Setup UI
         setupVolumeAndRingControls()
-        spotifyManager.setupSpotifyPlayerControls()
+        setupSpotifyControls()
 
         val btnCalendar = findViewById<ImageButton>(R.id.btnCalendar)
         setupCalendarButton(btnCalendar)
@@ -210,7 +208,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        spotifyManager.disconnect()
+        spotifyManager?.disconnect()
     }
 
     private fun verifySystemState() {
@@ -443,6 +441,47 @@ class MainActivity : AppCompatActivity() {
                 calendarSetup = SetupCalendar(this)
             }
             calendarSetup?.handleCalendarButtonClick()
+        }
+    }
+
+    private fun setupSpotifyControls() {
+        val btnPlayPause = findViewById<ImageButton>(R.id.btnPlayPause)
+        val btnPrev = findViewById<ImageButton>(R.id.btnPrev)
+        val btnNext = findViewById<ImageButton>(R.id.btnNext)
+        val tvTrack = findViewById<TextView>(R.id.tvTrack)
+        val tvArtist = findViewById<TextView>(R.id.tvArtist)
+        val ivAlbum = findViewById<ImageView>(R.id.ivAlbum)
+
+        // Lazy initialization - only create SpotifyManager when user interacts with controls
+        fun initializeSpotifyIfNeeded() {
+            if (spotifyManager == null) {
+                spotifyManager = SpotifyManager(this)
+                spotifyManager?.start()
+            }
+        }
+
+        btnPlayPause.setOnClickListener {
+            initializeSpotifyIfNeeded()
+            spotifyManager?.handlePlayPauseClick()
+        }
+
+        btnPrev.setOnClickListener {
+            initializeSpotifyIfNeeded()
+            spotifyManager?.handlePreviousClick()
+        }
+
+        btnNext.setOnClickListener {
+            initializeSpotifyIfNeeded()
+            spotifyManager?.handleNextClick()
+        }
+
+        // Setup click listeners for album art/text to open Spotify
+        val clickableViews = listOf(ivAlbum, tvTrack, tvArtist)
+        clickableViews.forEach { view ->
+            view.setOnClickListener {
+                initializeSpotifyIfNeeded()
+                spotifyManager?.handleSpotifyAppClick()
+            }
         }
     }
 
