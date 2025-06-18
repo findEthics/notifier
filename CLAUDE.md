@@ -4,7 +4,7 @@
 Minimal Android launcher app with notification management, Spotify controls, and calendar integration. Optimized for performance with lazy initialization patterns and contextual permission requests.
 
 ## Current Branch: minimal
-Latest commit includes lazy calendar permission implementation.
+Latest commit includes date display with integrated calendar functionality.
 
 ## Architecture & Major Optimizations
 
@@ -26,6 +26,8 @@ Latest commit includes lazy calendar permission implementation.
 - **Converted FABs to ImageButtons**: More minimal design approach
 - **Added Visual Separators**: Horizontal divider line between sections
 - **Home Launcher Support**: Can be set as default Android launcher
+- **Date Display Integration**: Current date shown in "Wed, June 18" format with integrated calendar functionality
+- **Streamlined Layout**: Calendar button removed, functionality moved to clickable date display
 
 ## Key Components
 
@@ -35,6 +37,8 @@ Latest commit includes lazy calendar permission implementation.
 - Handles volume controls, launcher buttons, and swipe-to-delete notifications
 - **Lazy Features**: Calendar and Spotify only initialized on user interaction
 - **Smart Permissions**: Calendar permissions requested contextually
+- **Date Display**: Dynamic current date with clickable calendar integration
+- **Layout**: Date on leftmost side, volume controls (mute, ring/vibrate) on rightmost side
 
 ### SpotifyManager
 - Spotify SDK integration with on-demand connection
@@ -62,7 +66,7 @@ Latest commit includes lazy calendar permission implementation.
 
 ### Permission Flow:
 ```
-Calendar Button Click → Check POST_NOTIFICATIONS → Check SCHEDULE_EXACT_ALARM → Create Notification Channel → Initialize Calendar
+Date Display Click → Check POST_NOTIFICATIONS → Check SCHEDULE_EXACT_ALARM → Create Notification Channel → Initialize Calendar
 ```
 
 ## Build & Development
@@ -88,6 +92,9 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 ## Recent Optimizations History
 
 ### Latest (Current):
+- ✅ **Date Display Integration**: Current date display with integrated calendar functionality
+- ✅ **Streamlined UI**: Removed calendar button, moved functionality to clickable date
+- ✅ **Layout Optimization**: Date on leftmost side, controls on rightmost side
 - ✅ **Lazy Calendar Permissions**: Contextual permission requests only when needed
 - ✅ **Permission Caching**: Smart state management
 - ✅ **Startup Performance**: Eliminated permission dialogs from app launch
@@ -121,8 +128,9 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 ### Core Features:
 - **Notification Management**: View, dismiss, and interact with notifications
 - **Spotify Integration**: Control playback, view current track
-- **Calendar Integration**: View events and set reminders
+- **Calendar Integration**: View events and set reminders (via clickable date display)
 - **Volume Controls**: Mute, ring/vibrate toggle
+- **Date Display**: Dynamic current date in "Wed, June 18" format
 - **App Launchers**: Quick access to WhatsApp, Assistant, Maps
 - **Home Launcher**: Can replace default Android launcher
 
@@ -146,4 +154,25 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 - Separation of concerns
 - Error handling with fallbacks
 
-Last Updated: 2024 - After implementing lazy calendar permission optimization
+Last Updated: 2024 - After implementing date display with integrated calendar functionality
+
+## Latest UI Changes
+
+### Date Display Implementation:
+- **Position**: Leftmost side of the control bar
+- **Format**: "Wed, June 18" (dynamic, updates with current date)
+- **Functionality**: Clickable to access calendar (same flow as previous calendar button)
+- **Visual**: Bold text with selectable background for touch feedback
+- **Layout**: Space-between layout with date on left, volume controls on right
+
+### Removed Elements:
+- **Calendar Button**: No longer needed, functionality moved to date display
+- **Battery Indicator**: Previously removed for minimal design
+
+### Current Layout Structure:
+```
+[Spotify Controls Row]
+[Date Display] ---------> [Mute Button] [Ring/Vibrate Button]
+[Horizontal Divider]
+[Notification List]
+```

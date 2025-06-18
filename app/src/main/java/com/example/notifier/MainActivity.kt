@@ -29,6 +29,9 @@ import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.example.notifier.Calendar.SetupCalendar
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
     private val notifications = mutableListOf<NotificationData>()
@@ -124,11 +127,12 @@ class MainActivity : AppCompatActivity() {
         isMuted = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
 
         // Setup UI
+        setupCurrentDate()
         setupVolumeAndRingControls()
         setupSpotifyControls()
 
-        val btnCalendar = findViewById<ImageButton>(R.id.btnCalendar)
-        setupCalendarButton(btnCalendar)
+        // Calendar functionality moved to date display
+        setupDateDisplayCalendar()
         // Setup action button listeners
         setupActionButtonListeners()
 
@@ -332,6 +336,22 @@ class MainActivity : AppCompatActivity() {
 
 
 
+    private fun setupCurrentDate() {
+        val tvCurrentDate = findViewById<TextView>(R.id.tvCurrentDate)
+        val calendar = Calendar.getInstance()
+        val dateFormat = SimpleDateFormat("EEE, MMMM d", Locale.getDefault())
+        val currentDate = dateFormat.format(calendar.time)
+        tvCurrentDate.text = currentDate
+    }
+
+    private fun setupDateDisplayCalendar() {
+        val tvCurrentDate = findViewById<TextView>(R.id.tvCurrentDate)
+        tvCurrentDate.setOnClickListener {
+            // Use the same calendar permission flow as before
+            checkCalendarPermissionsAndProceed()
+        }
+    }
+
     private fun setupVolumeAndRingControls() {
         val btnMute = findViewById<ImageButton>(R.id.btnMute)
         val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
@@ -501,12 +521,6 @@ class MainActivity : AppCompatActivity() {
         proceedWithCalendarSetup()
     }
 
-    private fun setupCalendarButton(btnCalendar: ImageButton) {
-        btnCalendar.setOnClickListener {
-            // New flow: Check permissions before proceeding
-            checkCalendarPermissionsAndProceed()
-        }
-    }
 
     private fun setupSpotifyControls() {
         val btnPlayPause = findViewById<ImageButton>(R.id.btnPlayPause)
