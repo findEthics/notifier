@@ -45,6 +45,10 @@ class MainActivity : AppCompatActivity() {
     private val KEY_MUTE_STATE = "mute_state"
     private var calendarSetup: SetupCalendar? = null
     private var spotifyManager: SpotifyManager? = null
+    
+    // Permission state caching
+    private var postNotificationPermissionGranted: Boolean? = null
+    private var exactAlarmPermissionGranted: Boolean? = null
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -92,12 +96,15 @@ class MainActivity : AppCompatActivity() {
     // Activity Result Launcher for POST_NOTIFICATIONS permission
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            // Update cache
+            postNotificationPermissionGranted = isGranted
+            
             if (isGranted) {
-                // Permission is granted. You can now post notifications.
-                checkAndRequestExactAlarmPermission() // Chain to the next permission check
+                // Permission granted, continue with exact alarm check
+                checkExactAlarmAndProceed()
             } else {
-                // Explain to the user that the feature is unavailable
-                Toast.makeText(this, "Notification permission denied. Reminders will not work.", Toast.LENGTH_LONG).show()
+                // Permission denied
+                showPermissionDeniedMessage()
             }
         }
 
@@ -106,9 +113,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // Spotify will be setup lazily when user interacts with controls
-
-        createNotificationChannel()
-        checkAndRequestPermissions()
+        // Calendar permissions will be checked when calendar button is clicked
 
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         // Initialize SharedPreferences HERE
@@ -204,6 +209,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         verifySystemState()
+        // Invalidate permission cache when returning from settings
+        invalidatePermissionCache()
     }
 
     override fun onStop() {
@@ -324,74 +331,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Calendar Event Reminders"
-            val descriptionText = "Notifications for upcoming calendar events"
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel("CALENDAR_REMINDERS", name, importance).apply {
-                description = descriptionText
-            }
-            // Register the channel with the system
-            val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
-
-    private fun checkAndRequestPermissions() {
-        // 1. Check for POST_NOTIFICATIONS (Android 13+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    // Permission is already granted
-                    checkAndRequestExactAlarmPermission() // Check next permission
-                }
-                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
-                    // Show a dialog explaining why you need the permission
-                    AlertDialog.Builder(this)
-                        .setTitle("Permission Needed")
-                        .setMessage("This app needs permission to post notifications to provide reminders for your calendar events.")
-                        .setPositiveButton("OK") { _, _ ->
-                            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .create()
-                        .show()
-                }
-                else -> {
-                    // Directly request the permission
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        } else {
-            // For older versions, this permission is not needed, so check the next one
-            checkAndRequestExactAlarmPermission()
-        }
-    }
-
-    // 2. Check for SCHEDULE_EXACT_ALARM (Android 12+)
-    private fun checkAndRequestExactAlarmPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            if (!alarmManager.canScheduleExactAlarms()) {
-                // Show a dialog to explain and guide the user to settings
-                AlertDialog.Builder(this)
-                    .setTitle("Permission Needed for Reminders")
-                    .setMessage("To set precise reminders for your events, this app needs special permission to schedule exact alarms. Please grant it in the next screen.")
-                    .setPositiveButton("Go to Settings") { _, _ ->
-                        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                        startActivity(intent)
-                    }
-                    .setNegativeButton("Not now", null)
-                    .create()
-                    .show()
-            }
-        }
-    }
 
     private fun setupVolumeAndRingControls() {
         val btnMute = findViewById<ImageButton>(R.id.btnMute)
@@ -434,13 +373,138 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Permission cache management
+    private fun invalidatePermissionCache() {
+        postNotificationPermissionGranted = null
+        exactAlarmPermissionGranted = null
+    }
+
+    // Calendar permission checking methods
+    private fun needsPostNotificationPermission(): Boolean {
+        if (postNotificationPermissionGranted == null) {
+            postNotificationPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true // Not needed on older versions
+            }
+        }
+        return postNotificationPermissionGranted == false
+    }
+
+    private fun needsExactAlarmPermission(): Boolean {
+        if (exactAlarmPermissionGranted == null) {
+            exactAlarmPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                alarmManager.canScheduleExactAlarms()
+            } else {
+                true // Not needed on older versions
+            }
+        }
+        return exactAlarmPermissionGranted == false
+    }
+
+    private fun checkCalendarPermissionsAndProceed() {
+        if (needsPostNotificationPermission()) {
+            requestPostNotificationPermission()
+        } else {
+            checkExactAlarmAndProceed()
+        }
+    }
+
+    private fun checkExactAlarmAndProceed() {
+        if (needsExactAlarmPermission()) {
+            requestExactAlarmPermission()
+        } else {
+            proceedWithCalendarSetup()
+        }
+    }
+
+    private fun requestPostNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
+                    AlertDialog.Builder(this)
+                        .setTitle("Calendar Notification Permission")
+                        .setMessage("Calendar needs notification permission to remind you about upcoming events.")
+                        .setPositiveButton("Grant Permission") { _, _ ->
+                            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        .setNegativeButton("Cancel") { _, _ ->
+                            showPermissionDeniedMessage()
+                        }
+                        .create()
+                        .show()
+                }
+                else -> {
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
+
+    private fun requestExactAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            AlertDialog.Builder(this)
+                .setTitle("Calendar Reminder Permission")
+                .setMessage("For precise calendar reminders, please grant exact alarm permission in the next screen.")
+                .setPositiveButton("Go to Settings") { _, _ ->
+                    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                    startActivity(intent)
+                }
+                .setNegativeButton("Continue without") { _, _ ->
+                    showExactAlarmDeniedMessage()
+                }
+                .create()
+                .show()
+        }
+    }
+
+    private fun proceedWithCalendarSetup() {
+        // Create notification channel when actually needed
+        createCalendarNotificationChannel()
+        
+        // Lazy initialization - only create CalendarSetup when permissions are granted
+        if (calendarSetup == null) {
+            calendarSetup = SetupCalendar(this)
+        }
+        calendarSetup?.handleCalendarButtonClick()
+    }
+
+    private fun createCalendarNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Calendar Event Reminders"
+            val descriptionText = "Notifications for upcoming calendar events"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel("CALENDAR_REMINDERS", name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun showPermissionDeniedMessage() {
+        Toast.makeText(this, 
+            "Calendar features require notification permission for reminders", 
+            Toast.LENGTH_LONG).show()
+    }
+
+    private fun showExactAlarmDeniedMessage() {
+        Toast.makeText(this, 
+            "Calendar reminders will work but may not be precisely timed", 
+            Toast.LENGTH_LONG).show()
+        // Still proceed with calendar but with limited functionality
+        proceedWithCalendarSetup()
+    }
+
     private fun setupCalendarButton(btnCalendar: ImageButton) {
         btnCalendar.setOnClickListener {
-            // Lazy initialization - only create CalendarSetup when button is clicked
-            if (calendarSetup == null) {
-                calendarSetup = SetupCalendar(this)
-            }
-            calendarSetup?.handleCalendarButtonClick()
+            // New flow: Check permissions before proceeding
+            checkCalendarPermissionsAndProceed()
         }
     }
 
