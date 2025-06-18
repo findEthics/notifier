@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Handler
+import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -21,52 +23,109 @@ class AppNotificationListenerService : NotificationListenerService() {
     private val summaryKeys = mutableMapOf<String, String>() // Group ID → Latest Key
     private val activeNotifications = mutableMapOf<String, StatusBarNotification>()
 
+    // Batching components
+    private val handler = Handler(Looper.getMainLooper())
+    private val pendingNotifications = mutableListOf<StatusBarNotification>()
+    private val batchDelay = 15*1000L // 300ms batching window
+    
+    private val batchProcessor = Runnable {
+        processBatchedNotifications()
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        // Immediate filtering and cancellation for unwanted notifications
         if (sbn.packageName !in allowedPackages) {
             Log.d("NotificationListenerService", "Ignoring notification from ${sbn.packageName}")
             cancelNotification(sbn.key)
             return
-        }  // Ignore notifications not in the list and remove from system notifications
-        val extras = sbn.notification.extras
-        val title = extras.getString("android.title") ?: ""
-        val text = extras.getCharSequence("android.text")?.toString() ?: ""
-        Log.d("NotificationListenerService", "Received notification from ${sbn.packageName}")
-
-        if (sbn.packageName != "com.example.notifier") {
-            if (title.isEmpty() || text.isEmpty() || !(extras.containsKey("android.template"))) {
-                cancelNotification(sbn.key)
-                return
-            }
-        }// Skip empty and has no template notifications
-
-        val summaryText = extras.getString("android.summaryText") ?: ""
-        val isWhatsAppSummary = (summaryText != "")
-        if (isWhatsAppSummary && title!="WhatsApp") {
-            cancelNotification(sbn.key)
-            return
         }
 
+        // Immediate cancellation for call notifications (critical for UX)
+        val text = sbn.notification.extras.getCharSequence("android.text")?.toString() ?: ""
         if ((sbn.packageName == "com.whatsapp") && (text in ignoreNotification)) {
             Log.d("NotificationListenerService", "Ignoring call notification from ${sbn.packageName}")
             cancelNotification(sbn.key)
             return
         }
 
+        // Add to batching queue for processing
+        synchronized(pendingNotifications) {
+            pendingNotifications.add(sbn)
+        }
+
+        // Schedule batch processing
+        handler.removeCallbacks(batchProcessor)
+        handler.postDelayed(batchProcessor, batchDelay)
+    }
+
+    private fun processBatchedNotifications() {
+        val notificationsToProcess: List<StatusBarNotification>
+        
+        // Get all pending notifications
+        synchronized(pendingNotifications) {
+            notificationsToProcess = pendingNotifications.toList()
+            pendingNotifications.clear()
+        }
+
+        if (notificationsToProcess.isEmpty()) return
+
+        Log.d("NotificationListenerService", "Processing batch of ${notificationsToProcess.size} notifications")
+
+        val broadcastIntents = mutableListOf<Intent>()
+        val processedKeys = mutableSetOf<String>()
+
+        for (sbn in notificationsToProcess) {
+            val result = processIndividualNotification(sbn, processedKeys)
+            result?.let { broadcastIntents.add(it) }
+        }
+
+        // Send all broadcasts in a single batch
+        for (intent in broadcastIntents) {
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+        }
+    }
+
+    private fun processIndividualNotification(sbn: StatusBarNotification, processedKeys: MutableSet<String>): Intent? {
+        val extras = sbn.notification.extras
+        val title = extras.getString("android.title") ?: ""
+        val text = extras.getCharSequence("android.text")?.toString() ?: ""
+
+        Log.d("NotificationListenerService", "Processing notification from ${sbn.packageName}")
+
+        if (sbn.packageName != "com.example.notifier") {
+            if (title.isEmpty() || text.isEmpty() || !(extras.containsKey("android.template"))) {
+                cancelNotification(sbn.key)
+                return null
+            }
+        }
+
+        val summaryText = extras.getString("android.summaryText") ?: ""
+        val isWhatsAppSummary = (summaryText != "")
+        if (isWhatsAppSummary && title != "WhatsApp") {
+            cancelNotification(sbn.key)
+            return null
+        }
+
         val isGroupSummary = extras.getBoolean("android.support.isGroupSummary", false)
         var postTimeProxy = sbn.postTime
         if (text == "Incoming voice call" && sbn.packageName == "com.whatsapp") {
-            postTimeProxy = sbn.postTime/100000
+            postTimeProxy = sbn.postTime / 100000
         }
-        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${postTimeProxy}" // Create unique key
+        val contentKey = "${sbn.packageName}|${sbn.id}|${title}|${postTimeProxy}"
+
+        // Skip if already processed in this batch
+        if (contentKey in processedKeys) return null
+        processedKeys.add(contentKey)
 
         activeNotifications[contentKey] = sbn
-        if (!isGroupSummary && contentKey in seenKeys) return // Skip already seen individual notifications (avoid duplicates)
+        if (!isGroupSummary && contentKey in seenKeys) return null
 
-        if (!isGroupSummary) { seenKeys.add(contentKey) } // Track individual notifications
+        if (!isGroupSummary) {
+            seenKeys.add(contentKey)
+        }
 
         // Handle group summaries
         if (isGroupSummary || isWhatsAppSummary) {
-            // Check if we already have a summary for this package
             val groupId = sbn.notification.group ?: "default_group"
             val newSummaryKey = "SUMMARY|${sbn.packageName}|$groupId|${sbn.postTime}"
 
@@ -81,33 +140,26 @@ class AppNotificationListenerService : NotificationListenerService() {
                 }
             }
 
-            // Track new summary
             summaryKeys[sbn.packageName] = newSummaryKey
 
-            // Send the new summary
-            LocalBroadcastManager.getInstance(this).sendBroadcast(
-                Intent("NEW_NOTIFICATION").apply {
-                    putExtra("key", newSummaryKey)
-                    putExtra("title", title)
-                    putExtra("text", text)
-                    putExtra("package", sbn.packageName)
-                    putExtra("isGroupSummary", isGroupSummary)
-                    putExtra("systemKey", sbn.key)
-                }
-            )
-
-        } else { //Send individual notification
+            return Intent("NEW_NOTIFICATION").apply {
+                putExtra("key", newSummaryKey)
+                putExtra("title", title)
+                putExtra("text", text)
+                putExtra("package", sbn.packageName)
+                putExtra("isGroupSummary", isGroupSummary)
+                putExtra("systemKey", sbn.key)
+            }
+        } else {
             val key = "INDIVIDUAL|${sbn.packageName}|$contentKey"
-            LocalBroadcastManager.getInstance(this).sendBroadcast(
-                Intent("NEW_NOTIFICATION").apply {
-                    putExtra("key", key)
-                    putExtra("title", title)
-                    putExtra("text", text)
-                    putExtra("package", sbn.packageName)
-                    putExtra("isGroupSummary", isGroupSummary)
-                    putExtra("systemKey", sbn.key)
-                }
-            )
+            return Intent("NEW_NOTIFICATION").apply {
+                putExtra("key", key)
+                putExtra("title", title)
+                putExtra("text", text)
+                putExtra("package", sbn.packageName)
+                putExtra("isGroupSummary", isGroupSummary)
+                putExtra("systemKey", sbn.key)
+            }
         }
     }
 
@@ -199,6 +251,8 @@ class AppNotificationListenerService : NotificationListenerService() {
 //    }
 
     override fun onDestroy() {
+        // Clean up batching handler
+        handler.removeCallbacks(batchProcessor)
         LocalBroadcastManager.getInstance(this).unregisterReceiver(cancelReceiver)
 //        LocalBroadcastManager.getInstance(this).unregisterReceiver(refreshReceiver)
         super.onDestroy()
