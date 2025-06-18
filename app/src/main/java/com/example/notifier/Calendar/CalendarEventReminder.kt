@@ -6,7 +6,6 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import java.time.OffsetDateTime
 import java.time.ZoneId
 
@@ -26,7 +25,6 @@ class CalendarEventReminder {
 
                 // Check if the standard 15-minute reminder time is in the past
                 if (reminderTimeMillis <= currentTimeMillis) {
-                    Log.d("CalendarEventReminder", "Event '${event.summary}' is too soon. Setting reminder for 1 minute from now.")
                     // If it is, set a new reminder time for 1 minute from now
                     reminderTimeMillis = currentTimeMillis + (1 * 60 * 1000)
                 }
@@ -52,14 +50,11 @@ class CalendarEventReminder {
                         reminderTimeMillis,
                         pendingIntent
                     )
-                    Log.d("CalendarEventReminder", "Scheduled reminder for '${event.summary}' at ${OffsetDateTime.ofInstant(java.time.Instant.ofEpochMilli(reminderTimeMillis), ZoneId.systemDefault())}")
                 } else {
-                    Log.w("CalendarEventReminder", "Cannot schedule exact alarms. Permission not granted.")
                 }
             }
         } catch (e: Exception) {
             // This can happen for all-day events that don't have a specific time
-            Log.e("CalendarEventReminder", "Could not parse event time for '${event.summary}': ${event.startTime}", e)
         }
     }
 }

@@ -8,7 +8,6 @@ import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class AppNotificationListenerService : NotificationListenerService() {
@@ -26,7 +25,7 @@ class AppNotificationListenerService : NotificationListenerService() {
     // Batching components
     private val handler = Handler(Looper.getMainLooper())
     private val pendingNotifications = mutableListOf<StatusBarNotification>()
-    private val batchDelay = 15*1000L // 300ms batching window
+    private val batchDelay = 15*1000L // 15s batching window
     
     private val batchProcessor = Runnable {
         processBatchedNotifications()
@@ -35,7 +34,6 @@ class AppNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         // Immediate filtering and cancellation for unwanted notifications
         if (sbn.packageName !in allowedPackages) {
-            Log.d("NotificationListenerService", "Ignoring notification from ${sbn.packageName}")
             cancelNotification(sbn.key)
             return
         }
@@ -43,7 +41,6 @@ class AppNotificationListenerService : NotificationListenerService() {
         // Immediate cancellation for call notifications (critical for UX)
         val text = sbn.notification.extras.getCharSequence("android.text")?.toString() ?: ""
         if ((sbn.packageName == "com.whatsapp") && (text in ignoreNotification)) {
-            Log.d("NotificationListenerService", "Ignoring call notification from ${sbn.packageName}")
             cancelNotification(sbn.key)
             return
         }
@@ -69,8 +66,6 @@ class AppNotificationListenerService : NotificationListenerService() {
 
         if (notificationsToProcess.isEmpty()) return
 
-        Log.d("NotificationListenerService", "Processing batch of ${notificationsToProcess.size} notifications")
-
         val broadcastIntents = mutableListOf<Intent>()
         val processedKeys = mutableSetOf<String>()
 
@@ -89,8 +84,6 @@ class AppNotificationListenerService : NotificationListenerService() {
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
-
-        Log.d("NotificationListenerService", "Processing notification from ${sbn.packageName}")
 
         if (sbn.packageName != "com.example.notifier") {
             if (title.isEmpty() || text.isEmpty() || !(extras.containsKey("android.template"))) {

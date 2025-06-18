@@ -24,7 +24,6 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import android.media.RingtoneManager
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -76,16 +75,6 @@ class MainActivity : AppCompatActivity() {
                         systemKey = systemKey
                     ))
                     adapter.notifyDataSetChanged()
-                    if (packageName == "com.whatsapp") {
-                        try {
-                            val notification =
-                                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                            val r = RingtoneManager.getRingtone(context, notification)
-                            r.play()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
                 }
                 "REMOVE_NOTIFICATION" -> {
                     val key = intent.getStringExtra("key") ?: return

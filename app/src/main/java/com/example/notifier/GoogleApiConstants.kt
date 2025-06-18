@@ -1,7 +1,6 @@
 package com.example.notifier
 
 import android.content.Context
-import android.util.Log
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException

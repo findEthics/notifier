@@ -38,7 +38,6 @@ class AlarmReceiver : BroadcastReceiver() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
-            .setDefaults(Notification.DEFAULT_ALL)
             .setCategory(NotificationCompat.CATEGORY_SYSTEM)
             // --- DIAGNOSTIC TEST: Temporarily make the notification ongoing ---
 //            .setOngoing(true)

@@ -3,7 +3,6 @@ package com.example.notifier
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
@@ -48,7 +47,6 @@ class SpotifyManager(private val activity: Activity) {
                 subscribeToPlayerState()
             }
             override fun onFailure(throwable: Throwable) {
-                Log.e("SpotifyManager", "Connection failed", throwable)
             }
         })
     }

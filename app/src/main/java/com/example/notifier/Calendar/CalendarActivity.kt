@@ -1,7 +1,6 @@
 package com.example.notifier.Calendar
 
 import android.os.Bundle
-import android.util.Log
 import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -42,9 +41,7 @@ class CalendarActivity : AppCompatActivity() {
                 // This callback runs on the main thread
                 if (newEvents != null) {
                     adapter.updateData(newEvents)
-                    Log.i("CalendarActivity", "Events refreshed after login")
                 } else {
-                    Log.e("CalendarActivity", "Failed to refresh events after login")
                 }
             }
         }
@@ -69,9 +66,7 @@ class CalendarActivity : AppCompatActivity() {
                     calendarSetup.triggerAuthenticationFlow { newEvents ->
                         if (newEvents != null) {
                             adapter.updateData(newEvents)
-                            Log.i("CalendarActivity", "Login successful, events updated")
                         } else {
-                            Log.e("CalendarActivity", "Authentication failed during refresh")
                         }
                     }
                 }
