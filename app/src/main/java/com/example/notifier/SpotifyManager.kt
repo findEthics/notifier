@@ -77,30 +77,42 @@ class SpotifyManager(private val activity: Activity) {
         }
     }
 
-    fun handlePlayPauseClick() {
-        connectIfNeeded()
-        spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
-            if (playerState.isPaused) {
-                spotifyAppRemote?.playerApi?.resume()
-            } else {
-                spotifyAppRemote?.playerApi?.pause()
+    fun setupSpotifyPlayerControls() {
+        val btnPlayPause = activity.findViewById<ImageButton>(R.id.btnPlayPause)
+        val btnPrev = activity.findViewById<ImageButton>(R.id.btnPrev)
+        val btnNext = activity.findViewById<ImageButton>(R.id.btnNext)
+
+        btnPlayPause.setOnClickListener {
+            connectIfNeeded()
+            spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
+                if (playerState.isPaused) {
+                    spotifyAppRemote?.playerApi?.resume()
+                } else {
+                    spotifyAppRemote?.playerApi?.pause()
+                }
             }
         }
-    }
 
-    fun handlePreviousClick() {
-        connectIfNeeded()
-        spotifyAppRemote?.playerApi?.skipPrevious()
-    }
+        btnPrev.setOnClickListener { 
+            connectIfNeeded()
+            spotifyAppRemote?.playerApi?.skipPrevious() 
+        }
+        btnNext.setOnClickListener { 
+            connectIfNeeded()
+            spotifyAppRemote?.playerApi?.skipNext() 
+        }
 
-    fun handleNextClick() {
-        connectIfNeeded()
-        spotifyAppRemote?.playerApi?.skipNext()
-    }
-
-    fun handleSpotifyAppClick() {
-        connectIfNeeded()
-        openInSpotify()
+        // Setup click listeners for album art/text to open Spotify
+        val tvTrack = activity.findViewById<TextView>(R.id.tvTrack)
+        val tvArtist = activity.findViewById<TextView>(R.id.tvArtist)
+        val ivAlbum = activity.findViewById<ImageView>(R.id.ivAlbum)
+        val clickableViews = listOf(ivAlbum, tvTrack, tvArtist)
+        clickableViews.forEach { view ->
+            view.setOnClickListener {
+                connectIfNeeded()
+                openInSpotify()
+            }
+        }
     }
 
 
