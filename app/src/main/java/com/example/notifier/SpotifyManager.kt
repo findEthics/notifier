@@ -26,6 +26,8 @@ class SpotifyManager(private val activity: Activity) {
     private var spotifyAppRemote: SpotifyAppRemote? = null
     private var currentTrackUri: String? = null
     private var currentContextUri: String? = null
+    private var pendingAction: (() -> Unit)? = null
+    private var isInitialized = false
 
     // --- Public Functions to be called from MainActivity ---
 
@@ -45,8 +47,13 @@ class SpotifyManager(private val activity: Activity) {
             override fun onConnected(appRemote: SpotifyAppRemote) {
                 spotifyAppRemote = appRemote
                 subscribeToPlayerState()
+                // Execute any pending action after connection
+                pendingAction?.invoke()
+                pendingAction = null
             }
             override fun onFailure(throwable: Throwable) {
+                // Clear pending action on failure
+                pendingAction = null
             }
         })
     }
@@ -71,19 +78,28 @@ class SpotifyManager(private val activity: Activity) {
         AuthorizationClient.openLoginActivity(activity, AUTH_TOKEN_REQUEST_CODE, request)
     }
 
-    fun connectIfNeeded() {
-        if (spotifyAppRemote == null) {
+
+    private fun initializeIfNeeded() {
+        if (!isInitialized) {
+            start()
+            isInitialized = true
+        }
+    }
+
+    private fun executeOrQueue(action: () -> Unit) {
+        if (spotifyAppRemote != null) {
+            // Already connected, execute immediately
+            action()
+        } else {
+            // Not connected, queue action and start connection
+            pendingAction = action
+            initializeIfNeeded()
             connect()
         }
     }
 
-    fun setupSpotifyPlayerControls() {
-        val btnPlayPause = activity.findViewById<ImageButton>(R.id.btnPlayPause)
-        val btnPrev = activity.findViewById<ImageButton>(R.id.btnPrev)
-        val btnNext = activity.findViewById<ImageButton>(R.id.btnNext)
-
-        btnPlayPause.setOnClickListener {
-            connectIfNeeded()
+    fun handlePlayPauseClick() {
+        executeOrQueue {
             spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
                 if (playerState.isPaused) {
                     spotifyAppRemote?.playerApi?.resume()
@@ -92,26 +108,23 @@ class SpotifyManager(private val activity: Activity) {
                 }
             }
         }
+    }
 
-        btnPrev.setOnClickListener { 
-            connectIfNeeded()
-            spotifyAppRemote?.playerApi?.skipPrevious() 
+    fun handlePreviousClick() {
+        executeOrQueue {
+            spotifyAppRemote?.playerApi?.skipPrevious()
         }
-        btnNext.setOnClickListener { 
-            connectIfNeeded()
-            spotifyAppRemote?.playerApi?.skipNext() 
-        }
+    }
 
-        // Setup click listeners for album art/text to open Spotify
-        val tvTrack = activity.findViewById<TextView>(R.id.tvTrack)
-        val tvArtist = activity.findViewById<TextView>(R.id.tvArtist)
-        val ivAlbum = activity.findViewById<ImageView>(R.id.ivAlbum)
-        val clickableViews = listOf(ivAlbum, tvTrack, tvArtist)
-        clickableViews.forEach { view ->
-            view.setOnClickListener {
-                connectIfNeeded()
-                openInSpotify()
-            }
+    fun handleNextClick() {
+        executeOrQueue {
+            spotifyAppRemote?.playerApi?.skipNext()
+        }
+    }
+
+    fun handleSpotifyAppClick() {
+        executeOrQueue {
+            openInSpotify()
         }
     }
 

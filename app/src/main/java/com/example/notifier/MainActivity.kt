@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     private val KEY_VIBRATE_MODE = "vibrate_mode"
     private val KEY_MUTE_STATE = "mute_state"
     private var calendarSetup: SetupCalendar? = null
-    private lateinit var spotifyManager: SpotifyManager
+    private var spotifyManager: SpotifyManager? = null
     
     // Permission state caching
     private var postNotificationPermissionGranted: Boolean? = null
@@ -104,12 +104,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Spotify setup
-        spotifyManager = SpotifyManager(this)
-        
-        // Start Spotify Auth Flow
-        spotifyManager.start()
-        
+        // Spotify will be setup lazily when user interacts with controls
         // Calendar permissions will be checked when calendar button is clicked
 
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
@@ -123,11 +118,11 @@ class MainActivity : AppCompatActivity() {
         // Setup UI
         setupCurrentDate()
         setupVolumeAndRingControls()
-        spotifyManager.setupSpotifyPlayerControls()
+        setupSpotifyControls()
 
         // Calendar functionality moved to date display
         setupDateDisplayCalendar()
-        // Setup action button listeners
+        // Setup action button listenerscommit the
         setupActionButtonListeners()
 
         if (!isNotificationServiceEnabled()) {
@@ -201,8 +196,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Auto-connect Spotify after auth
-        spotifyManager.connect()
+        // Spotify will connect only when user interacts with controls
     }
 
     override fun onResume() {
@@ -212,19 +206,10 @@ class MainActivity : AppCompatActivity() {
         invalidatePermissionCache()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        
-        // Handle Spotify authentication result
-        if (requestCode == 0x10) { // AUTH_TOKEN_REQUEST_CODE from SpotifyManager
-            // Authentication completed, try to connect
-            spotifyManager.connect()
-        }
-    }
 
     override fun onStop() {
         super.onStop()
-        spotifyManager.disconnect()
+        spotifyManager?.disconnect()
     }
 
     private fun verifySystemState() {
@@ -526,6 +511,45 @@ class MainActivity : AppCompatActivity() {
         proceedWithCalendarSetup()
     }
 
+    private fun setupSpotifyControls() {
+        val btnPlayPause = findViewById<ImageButton>(R.id.btnPlayPause)
+        val btnPrev = findViewById<ImageButton>(R.id.btnPrev)
+        val btnNext = findViewById<ImageButton>(R.id.btnNext)
+        val tvTrack = findViewById<TextView>(R.id.tvTrack)
+        val tvArtist = findViewById<TextView>(R.id.tvArtist)
+        val ivAlbum = findViewById<ImageView>(R.id.ivAlbum)
 
+        // Lazy initialization - only create SpotifyManager when user interacts with controls
+        fun initializeSpotifyIfNeeded(): SpotifyManager {
+            if (spotifyManager == null) {
+                spotifyManager = SpotifyManager(this)
+            }
+            return spotifyManager!!
+        }
+
+        btnPlayPause.setOnClickListener {
+            val manager = initializeSpotifyIfNeeded()
+            manager.handlePlayPauseClick()
+        }
+
+        btnPrev.setOnClickListener {
+            val manager = initializeSpotifyIfNeeded()
+            manager.handlePreviousClick()
+        }
+
+        btnNext.setOnClickListener {
+            val manager = initializeSpotifyIfNeeded()
+            manager.handleNextClick()
+        }
+
+        // Setup click listeners for album art/text to open Spotify
+        val clickableViews = listOf(ivAlbum, tvTrack, tvArtist)
+        clickableViews.forEach { view ->
+            view.setOnClickListener {
+                val manager = initializeSpotifyIfNeeded()
+                manager.handleSpotifyAppClick()
+            }
+        }
+    }
 
 }
