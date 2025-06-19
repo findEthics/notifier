@@ -529,17 +529,26 @@ class MainActivity : AppCompatActivity() {
 
         btnPlayPause.setOnClickListener {
             val manager = initializeSpotifyIfNeeded()
-            manager.handlePlayPauseClick()
+            val actionExecuted = manager.handlePlayPauseClick()
+            if (!actionExecuted) {
+                Toast.makeText(this, "Setting up Spotify player... Try again in a moment", Toast.LENGTH_SHORT).show()
+            }
         }
 
         btnPrev.setOnClickListener {
             val manager = initializeSpotifyIfNeeded()
-            manager.handlePreviousClick()
+            val actionExecuted = manager.handlePreviousClick()
+            if (!actionExecuted) {
+                Toast.makeText(this, "Setting up Spotify player... Try again in a moment", Toast.LENGTH_SHORT).show()
+            }
         }
 
         btnNext.setOnClickListener {
             val manager = initializeSpotifyIfNeeded()
-            manager.handleNextClick()
+            val actionExecuted = manager.handleNextClick()
+            if (!actionExecuted) {
+                Toast.makeText(this, "Setting up Spotify player... Try again in a moment", Toast.LENGTH_SHORT).show()
+            }
         }
 
         // Setup click listeners for album art/text to open Spotify
@@ -547,7 +556,10 @@ class MainActivity : AppCompatActivity() {
         clickableViews.forEach { view ->
             view.setOnClickListener {
                 val manager = initializeSpotifyIfNeeded()
-                manager.handleSpotifyAppClick()
+                val actionExecuted = manager.handleSpotifyAppClick()
+                if (!actionExecuted) {
+                    Toast.makeText(this, "Setting up Spotify player... Try again in a moment", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

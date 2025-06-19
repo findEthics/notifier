@@ -26,8 +26,8 @@ class SpotifyManager(private val activity: Activity) {
     private var spotifyAppRemote: SpotifyAppRemote? = null
     private var currentTrackUri: String? = null
     private var currentContextUri: String? = null
-    private var pendingAction: (() -> Unit)? = null
     private var isInitialized = false
+    private var isPlayerReady = false
 
     // --- Public Functions to be called from MainActivity ---
 
@@ -47,13 +47,10 @@ class SpotifyManager(private val activity: Activity) {
             override fun onConnected(appRemote: SpotifyAppRemote) {
                 spotifyAppRemote = appRemote
                 subscribeToPlayerState()
-                // Execute any pending action after connection
-                pendingAction?.invoke()
-                pendingAction = null
+                isPlayerReady = true
             }
             override fun onFailure(throwable: Throwable) {
-                // Clear pending action on failure
-                pendingAction = null
+                isPlayerReady = false
             }
         })
     }
@@ -86,46 +83,47 @@ class SpotifyManager(private val activity: Activity) {
         }
     }
 
-    private fun executeOrQueue(action: () -> Unit) {
-        if (spotifyAppRemote != null) {
-            // Already connected, execute immediately
-            action()
-        } else {
-            // Not connected, queue action and start connection
-            pendingAction = action
+    private fun setupPlayerIfNeeded(): Boolean {
+        if (!isPlayerReady) {
             initializeIfNeeded()
             connect()
+            return false // Setup initiated, action should wait
         }
+        return true // Player ready, action can proceed
     }
 
-    fun handlePlayPauseClick() {
-        executeOrQueue {
-            spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
-                if (playerState.isPaused) {
-                    spotifyAppRemote?.playerApi?.resume()
-                } else {
-                    spotifyAppRemote?.playerApi?.pause()
-                }
+    fun handlePlayPauseClick(): Boolean {
+        if (!setupPlayerIfNeeded()) return false
+        
+        spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
+            if (playerState.isPaused) {
+                spotifyAppRemote?.playerApi?.resume()
+            } else {
+                spotifyAppRemote?.playerApi?.pause()
             }
         }
+        return true
     }
 
-    fun handlePreviousClick() {
-        executeOrQueue {
-            spotifyAppRemote?.playerApi?.skipPrevious()
-        }
+    fun handlePreviousClick(): Boolean {
+        if (!setupPlayerIfNeeded()) return false
+        
+        spotifyAppRemote?.playerApi?.skipPrevious()
+        return true
     }
 
-    fun handleNextClick() {
-        executeOrQueue {
-            spotifyAppRemote?.playerApi?.skipNext()
-        }
+    fun handleNextClick(): Boolean {
+        if (!setupPlayerIfNeeded()) return false
+        
+        spotifyAppRemote?.playerApi?.skipNext()
+        return true
     }
 
-    fun handleSpotifyAppClick() {
-        executeOrQueue {
-            openInSpotify()
-        }
+    fun handleSpotifyAppClick(): Boolean {
+        if (!setupPlayerIfNeeded()) return false
+        
+        openInSpotify()
+        return true
     }
 
 
