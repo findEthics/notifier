@@ -531,7 +531,7 @@ class MainActivity : AppCompatActivity() {
             val manager = initializeSpotifyIfNeeded()
             val actionExecuted = manager.handlePlayPauseClick()
             if (!actionExecuted) {
-                Toast.makeText(this, "Setting up Spotify player... Try again in a moment", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -539,7 +539,7 @@ class MainActivity : AppCompatActivity() {
             val manager = initializeSpotifyIfNeeded()
             val actionExecuted = manager.handlePreviousClick()
             if (!actionExecuted) {
-                Toast.makeText(this, "Setting up Spotify player... Try again in a moment", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -547,7 +547,7 @@ class MainActivity : AppCompatActivity() {
             val manager = initializeSpotifyIfNeeded()
             val actionExecuted = manager.handleNextClick()
             if (!actionExecuted) {
-                Toast.makeText(this, "Setting up Spotify player... Try again in a moment", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -558,7 +558,7 @@ class MainActivity : AppCompatActivity() {
                 val manager = initializeSpotifyIfNeeded()
                 val actionExecuted = manager.handleSpotifyAppClick()
                 if (!actionExecuted) {
-                    Toast.makeText(this, "Setting up Spotify player... Try again in a moment", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
                 }
             }
         }

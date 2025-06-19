@@ -3,6 +3,8 @@ package com.example.notifier
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
@@ -28,6 +30,12 @@ class SpotifyManager(private val activity: Activity) {
     private var currentContextUri: String? = null
     private var isInitialized = false
     private var isPlayerReady = false
+    
+    // Auto-disconnect functionality
+    private val handler = Handler(Looper.getMainLooper())
+    private var autoDisconnectRunnable: Runnable? = null
+    private var isPlaying = false
+    private val AUTO_DISCONNECT_DELAY = 1 * 60 * 1000L // 5 minutes
 
     // --- Public Functions to be called from MainActivity ---
 
@@ -56,9 +64,11 @@ class SpotifyManager(private val activity: Activity) {
     }
 
     fun disconnect() {
+        cancelAutoDisconnect()
         spotifyAppRemote?.let {
             SpotifyAppRemote.disconnect(it)
             spotifyAppRemote = null
+            isPlayerReady = false
         }
     }
 
@@ -145,15 +155,39 @@ class SpotifyManager(private val activity: Activity) {
                 }
             }
 
+            // Update play/pause state and manage auto-disconnect
+            isPlaying = !playerState.isPaused
             if (playerState.isPaused) {
                 btnPlayPause.setImageResource(R.drawable.ic_play)
+                startAutoDisconnectTimer()
             } else {
                 btnPlayPause.setImageResource(R.drawable.ic_pause)
+                cancelAutoDisconnect()
             }
         }
 
         spotifyAppRemote?.playerApi?.subscribeToPlayerContext()?.setEventCallback { context ->
             currentContextUri = context.uri
+        }
+    }
+
+    private fun startAutoDisconnectTimer() {
+        cancelAutoDisconnect() // Cancel any existing timer
+        
+        autoDisconnectRunnable = Runnable {
+            if (!isPlaying && spotifyAppRemote != null) {
+                Toast.makeText(activity, "Spotify disconnected due to inactivity", Toast.LENGTH_SHORT).show()
+                disconnect()
+            }
+        }
+        
+        handler.postDelayed(autoDisconnectRunnable!!, AUTO_DISCONNECT_DELAY)
+    }
+    
+    private fun cancelAutoDisconnect() {
+        autoDisconnectRunnable?.let {
+            handler.removeCallbacks(it)
+            autoDisconnectRunnable = null
         }
     }
 
