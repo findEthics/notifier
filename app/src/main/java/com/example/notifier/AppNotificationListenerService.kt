@@ -15,8 +15,8 @@ class AppNotificationListenerService : NotificationListenerService() {
         "com.whatsapp","com.mudita.messages","com.mudita.calendar","com.example.notifier"
         // Only listen for notifications from these apps
     )
-    private val ignoreNotification = setOf(
-        "Ringing…","Calling…"
+    private val ignoreWhatsappNotification = setOf(
+        "Ringing…","Calling…", "Ongoing voice call"
     )
     private val seenKeys = mutableSetOf<String>()
     private val summaryKeys = mutableMapOf<String, String>() // Group ID → Latest Key
@@ -40,7 +40,7 @@ class AppNotificationListenerService : NotificationListenerService() {
 
         // Immediate cancellation for call notifications (critical for UX)
         val text = sbn.notification.extras.getCharSequence("android.text")?.toString() ?: ""
-        if ((sbn.packageName == "com.whatsapp") && (text in ignoreNotification)) {
+        if ((sbn.packageName == "com.whatsapp") && (text in ignoreWhatsappNotification)) {
             cancelNotification(sbn.key)
             return
         }

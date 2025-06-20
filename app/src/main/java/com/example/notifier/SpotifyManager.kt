@@ -21,9 +21,9 @@ import com.spotify.sdk.android.auth.AuthorizationResponse
 class SpotifyManager(private val activity: Activity) {
 
     // --- Spotify Constants and Properties ---
-    private val CLIENT_ID = "b5954f6b7e1f44b68a9c170550ce3d10"
-    private val REDIRECT_URI = "notifier://callback"
-    private val AUTH_TOKEN_REQUEST_CODE = 0x10
+    private val clientID = "b5954f6b7e1f44b68a9c170550ce3d10"
+    private val redirectURI = "notifier://callback"
+    private val authTokenRequestCode = 0x10
 
     private var spotifyAppRemote: SpotifyAppRemote? = null
     private var currentTrackUri: String? = null
@@ -35,7 +35,7 @@ class SpotifyManager(private val activity: Activity) {
     private val handler = Handler(Looper.getMainLooper())
     private var autoDisconnectRunnable: Runnable? = null
     private var isPlaying = false
-    private val AUTO_DISCONNECT_DELAY = 1 * 60 * 1000L // 5 minutes
+    private val autoDisconnectDelay = 5 * 60 * 1000L // 5 minutes
 
     // --- Public Functions to be called from MainActivity ---
 
@@ -46,8 +46,8 @@ class SpotifyManager(private val activity: Activity) {
     fun connect() {
         if (spotifyAppRemote != null) return // Already connected
         
-        val connectionParams = ConnectionParams.Builder(CLIENT_ID)
-            .setRedirectUri(REDIRECT_URI)
+        val connectionParams = ConnectionParams.Builder(clientID)
+            .setRedirectUri(redirectURI)
             .showAuthView(true)
             .build()
 
@@ -65,6 +65,7 @@ class SpotifyManager(private val activity: Activity) {
 
     fun disconnect() {
         cancelAutoDisconnect()
+        resetSpotifyUI()
         spotifyAppRemote?.let {
             SpotifyAppRemote.disconnect(it)
             spotifyAppRemote = null
@@ -76,13 +77,13 @@ class SpotifyManager(private val activity: Activity) {
 
     private fun startSpotifyAuth() {
         val builder = AuthorizationRequest.Builder(
-            CLIENT_ID,
+            clientID,
             AuthorizationResponse.Type.TOKEN,
-            REDIRECT_URI
+            redirectURI
         )
         builder.setScopes(arrayOf("app-remote-control", "user-modify-playback-state", "user-read-playback-state"))
         val request = builder.build()
-        AuthorizationClient.openLoginActivity(activity, AUTH_TOKEN_REQUEST_CODE, request)
+        AuthorizationClient.openLoginActivity(activity, authTokenRequestCode, request)
     }
 
 
@@ -181,7 +182,7 @@ class SpotifyManager(private val activity: Activity) {
             }
         }
         
-        handler.postDelayed(autoDisconnectRunnable!!, AUTO_DISCONNECT_DELAY)
+        handler.postDelayed(autoDisconnectRunnable!!, autoDisconnectDelay)
     }
     
     private fun cancelAutoDisconnect() {
@@ -189,6 +190,24 @@ class SpotifyManager(private val activity: Activity) {
             handler.removeCallbacks(it)
             autoDisconnectRunnable = null
         }
+    }
+
+    private fun resetSpotifyUI() {
+        val tvTrack = activity.findViewById<TextView>(R.id.tvTrack)
+        val tvArtist = activity.findViewById<TextView>(R.id.tvArtist)
+        val ivAlbum = activity.findViewById<ImageView>(R.id.ivAlbum)
+        val btnPlayPause = activity.findViewById<ImageButton>(R.id.btnPlayPause)
+
+        // Reset to original layout values
+        tvTrack.text = "Track"
+        tvArtist.text = "Artist"
+        ivAlbum.setImageResource(R.drawable.ic_music_note)
+        btnPlayPause.setImageResource(R.drawable.ic_play)
+        
+        // Clear internal state
+        currentTrackUri = null
+        currentContextUri = null
+        isPlaying = false
     }
 
     private fun openInSpotify() {
