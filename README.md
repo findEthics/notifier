@@ -55,10 +55,11 @@ cd notifier
 
 2. Open the project in Android Studio
 
-3. Create a `local.properties` file in the root directory and add your Google API credentials:
+3. Create a `local.properties` file in the root directory and add your API credentials:
 ```properties
 GOOGLE_WEB_CLIENT_ID=your_google_client_id
 GOOGLE_WEB_CLIENT_SECRET=your_google_client_secret
+SPOTIFY_CLIENT_ID=your_spotify_client_id
 ```
 
 4. Build and run the app on your Android device
@@ -73,10 +74,12 @@ GOOGLE_WEB_CLIENT_SECRET=your_google_client_secret
 5. Add your credentials to `local.properties`
 
 ### Spotify Setup
-The app includes a pre-configured Spotify Client ID. For production use, you should:
 1. Register your app at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
-2. Update the `CLIENT_ID` in `SpotifyManager.kt`
-3. Configure your redirect URI: `notifier://callback`
+2. Add your Spotify Client ID to `local.properties`:
+   ```properties
+   SPOTIFY_CLIENT_ID=your_spotify_client_id_here
+   ```
+3. Configure your redirect URI in Spotify Dashboard: `notifier://callback`
 
 **Note**: Spotify functionality uses lazy initialization - authentication only starts when user first interacts with music controls.
 

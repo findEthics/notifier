@@ -203,56 +203,11 @@ class AppNotificationListenerService : NotificationListenerService() {
 
     }
 
-//    private val refreshReceiver = object : BroadcastReceiver() {
-//        override fun onReceive(context: Context, intent: Intent) {
-//            if (intent.action == "FORCE_REFRESH") {
-//                forceRefreshNotifications()
-//            }
-//        }
-//    }
-
-//    private fun forceRefreshNotifications() {
-//        Log.d("NotificationListenerService", "Force refresh triggered")
-//        try {
-//            // Get current system notifications
-//            val currentSystemNotifications = getActiveNotifications()?.toList() ?: emptyList()
-//
-//            // 1. Remove local notifications not in system
-//            activeNotifications.keys.toList().forEach { key ->
-//                println("{key}")
-//                Log.d("NotificationListenerService", "Checking key Force Refresh: $key")
-//                if (currentSystemNotifications.none { generateKey(it) == key }) {
-//                    LocalBroadcastManager.getInstance(this).sendBroadcast(
-//                        Intent("REMOVE_NOTIFICATION").apply {
-//                            putExtra("key", key)
-//                        }
-//                    )
-//                }
-//            }
-//
-//            // 2. Add/update existing system notifications
-//            currentSystemNotifications.forEach { sbn ->
-//                if (sbn.packageName in allowedPackages) {
-//                    onNotificationPosted(sbn) // Re-process valid notifications
-//                } else {
-//                    cancelNotification(sbn.key)
-//                }
-//            }
-//        } catch (e: Exception) {
-//            Log.e("NotificationService", "Force refresh failed", e)
-//        }
-//    }
-
     override fun onDestroy() {
         // Clean up batching handler
         handler.removeCallbacks(batchProcessor)
         LocalBroadcastManager.getInstance(this).unregisterReceiver(cancelReceiver)
-//        LocalBroadcastManager.getInstance(this).unregisterReceiver(refreshReceiver)
         super.onDestroy()
     }
-
-//    private fun generateKey(sbn: StatusBarNotification): String {
-//        return "${sbn.packageName}|${sbn.id}|${sbn.notification.extras.getString("android.title")}|${sbn.postTime}"
-//    }
 
 }

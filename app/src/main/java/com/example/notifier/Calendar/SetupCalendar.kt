@@ -6,10 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
-import android.widget.ImageButton
 import android.widget.Toast
 import androidx.browser.customtabs.CustomTabsIntent
-//import com.example.notifier.Calendar.GoogleApiConstants
 import com.example.notifier.GoogleApiConstants
 import io.ktor.client.HttpClient // Ktor HTTP Client
 import io.ktor.client.engine.cio.CIO // Ktor CIO Engine
@@ -53,12 +51,6 @@ class SetupCalendar(private val activity: Activity) {
 
     }
     private val prefs: SharedPreferences = activity.getSharedPreferences(GoogleApiConstants.PREFS_NAME, Context.MODE_PRIVATE)
-
-    fun setupCalendar(btnCalendar: ImageButton) {
-        btnCalendar.setOnClickListener {
-            handleCalendarButtonClick()
-        }
-    }
 
     fun handleCalendarButtonClick() {
 
@@ -138,13 +130,11 @@ class SetupCalendar(private val activity: Activity) {
                 val fullUriString = "http://localhost$redirectPath"
                 val receivedUri = Uri.parse(fullUriString)
                 val code = receivedUri.getQueryParameter("code")
-                val error = receivedUri.getQueryParameter("error")
 
                 if (code != null) {
                     // THE FIX: Explicitly pass null for the optional onCancellation parameter.
                     continuation.resume(Pair(code, redirectUri), null)
                 } else {
-                    val errorMessage = "Auth code not found in redirect. Error from server: $error"
                     continuation.resumeWithException(Exception("Auth code not found in redirect."))
                 }
 
@@ -299,7 +289,6 @@ class SetupCalendar(private val activity: Activity) {
                     url = urlString,
                     formParameters = formParameters
                 )
-                logKtorResponse(response)
 
                 if (response.status != HttpStatusCode.OK) {
                     handleKtorErrorResponse(response, urlString)
@@ -325,7 +314,6 @@ class SetupCalendar(private val activity: Activity) {
                         header("Authorization", "Bearer $token")
                     }
                 }
-                logKtorResponse(response)
 
                 if (response.status != HttpStatusCode.OK) {
                     handleKtorErrorResponse(response, urlString)
@@ -342,11 +330,7 @@ class SetupCalendar(private val activity: Activity) {
         }
     }
 
-    private suspend fun logKtorResponse(response: HttpResponse) {
-    }
-
-    private suspend fun handleKtorErrorResponse(response: HttpResponse, urlString: String) {
-        val errorBody = try { response.bodyAsText() } catch (e: Exception) { "Could not read error body." }
+    private fun handleKtorErrorResponse(response: HttpResponse, urlString: String) {
         if (response.status == HttpStatusCode.Unauthorized && !urlString.contains("oauth2.googleapis.com/token")) {
             prefs.edit().remove(GoogleApiConstants.KEY_ACCESS_TOKEN).apply()
         }

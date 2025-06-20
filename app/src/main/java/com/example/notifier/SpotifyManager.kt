@@ -19,9 +19,8 @@ import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
 
 class SpotifyManager(private val activity: Activity) {
-
     // --- Spotify Constants and Properties ---
-    private val clientID = "b5954f6b7e1f44b68a9c170550ce3d10"
+    private val clientID = BuildConfig.SPOTIFY_CLIENT_ID
     private val redirectURI = "notifier://callback"
     private val authTokenRequestCode = 0x10
 
@@ -73,8 +72,6 @@ class SpotifyManager(private val activity: Activity) {
         }
     }
 
-    // --- Private Helper Functions moved from MainActivity ---
-
     private fun startSpotifyAuth() {
         val builder = AuthorizationRequest.Builder(
             clientID,
@@ -85,7 +82,6 @@ class SpotifyManager(private val activity: Activity) {
         val request = builder.build()
         AuthorizationClient.openLoginActivity(activity, authTokenRequestCode, request)
     }
-
 
     private fun initializeIfNeeded() {
         if (!isInitialized) {
@@ -136,7 +132,6 @@ class SpotifyManager(private val activity: Activity) {
         openInSpotify()
         return true
     }
-
 
     private fun subscribeToPlayerState() {
         val tvTrack = activity.findViewById<TextView>(R.id.tvTrack)

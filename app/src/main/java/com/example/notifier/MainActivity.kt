@@ -209,7 +209,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        spotifyManager?.disconnect()
+//        spotifyManager?.disconnect()
     }
 
     private fun verifySystemState() {
@@ -311,6 +311,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver)
         calendarSetup?.cleanup()
+        spotifyManager?.disconnect()
         super.onDestroy()
     }
 
