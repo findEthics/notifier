@@ -92,14 +92,20 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 ## Recent Optimizations History
 
 ### Latest (Current):
+- ✅ **Enhanced Spotify Integration**: Added dedicated Spotify connection button with 10-second timeout fallback
+- ✅ **Streamlined Spotify Controls**: Removed connection logic from play/pause/next/prev buttons
+- ✅ **Smart Timeout Handling**: Automatic fallback to direct app opening if connection fails
+- ✅ **Calendar Event Caching**: Intelligent daily event storage with midnight expiration
+- ✅ **Past Event Filtering**: Real-time filtering with 15-minute grace period for ongoing events
+- ✅ **Smart Cache Management**: "Using cached events" vs "Fetched fresh events" user feedback
+
+### Previous:
 - ✅ **Date Display Integration**: Current date display with integrated calendar functionality
 - ✅ **Streamlined UI**: Removed calendar button, moved functionality to clickable date
 - ✅ **Layout Optimization**: Date on leftmost side, controls on rightmost side
 - ✅ **Lazy Calendar Permissions**: Contextual permission requests only when needed
 - ✅ **Permission Caching**: Smart state management
 - ✅ **Startup Performance**: Eliminated permission dialogs from app launch
-
-### Previous:
 - ✅ **Lazy SpotifyManager**: Only initialize when user interacts with controls
 - ✅ **Lazy CalendarSetup**: Only initialize when calendar button clicked
 - ✅ **UI Improvements**: Added horizontal divider, converted FABs to ImageButtons
@@ -127,9 +133,12 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 
 ### Core Features:
 - **Notification Management**: View, dismiss, and interact with notifications
-- **Spotify Integration**: Control playback, view current track
+- **Enhanced Spotify Integration**: Dedicated connection button with 10-second timeout fallback
+- **Streamlined Spotify Controls**: Play/pause, previous/next only work when connected
 - **Calendar Integration**: View events and set reminders (via clickable date display)
-- **Volume Controls**: Mute, ring/vibrate toggle
+- **Smart Calendar Caching**: Daily event storage with midnight expiration
+- **Past Event Filtering**: Only display future events with 15-minute grace period
+- **Volume Controls**: Mute, ring/vibrate toggle with dedicated Spotify button
 - **Date Display**: Dynamic current date in "Wed, June 18" format
 - **App Launchers**: Quick access to WhatsApp, Assistant, Maps
 - **Home Launcher**: Can replace default Android launcher
@@ -154,25 +163,29 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 - Separation of concerns
 - Error handling with fallbacks
 
-Last Updated: 2024 - After implementing date display with integrated calendar functionality
+Last Updated: 2024 - After implementing enhanced Spotify integration with dedicated connection button and intelligent calendar caching system
 
-## Latest UI Changes
+## Latest Technical Changes
 
-### Date Display Implementation:
-- **Position**: Leftmost side of the control bar
-- **Format**: "Wed, June 18" (dynamic, updates with current date)
-- **Functionality**: Clickable to access calendar (same flow as previous calendar button)
-- **Visual**: Bold text with selectable background for touch feedback
-- **Layout**: Space-between layout with date on left, volume controls on right
+### Enhanced Spotify Integration:
+- **Dedicated Connection Button**: New Spotify button positioned between date display and volume controls
+- **10-Second Timeout**: Automatic fallback to direct app opening if connection setup exceeds 10 seconds
+- **Streamlined Controls**: Play/pause, previous/next buttons only work when Spotify is already connected
+- **Smart Connection Management**: Removed connection logic from control buttons, centralizing it in the dedicated button
+- **User Guidance**: Clear toast messages directing users to use the Spotify button for initial connection
 
-### Removed Elements:
-- **Calendar Button**: No longer needed, functionality moved to date display
-- **Battery Indicator**: Previously removed for minimal design
+### Calendar Caching System:
+- **CalendarCacheManager**: New SharedPreferences-based caching class
+- **Cache Expiration**: Midnight boundary detection using device timezone
+- **Event Filtering**: Real-time filtering of past events with 15-minute grace period
+- **Smart API Calls**: Only fetch from API when cache expired or force refresh
+- **User Feedback**: Toast messages distinguish cached vs fresh events
+- **In-Place Refresh**: Updates events without activity recreation for battery efficiency
 
 ### Current Layout Structure:
 ```
 [Spotify Controls Row]
-[Date Display] ---------> [Mute Button] [Ring/Vibrate Button]
+[Date Display] ---------> [Spotify Button] [Mute Button] [Ring/Vibrate Button]
 [Horizontal Divider]
 [Notification List]
 ```

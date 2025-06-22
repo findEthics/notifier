@@ -13,6 +13,8 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -51,6 +53,10 @@ class MainActivity : AppCompatActivity() {
     // Permission state caching
     private var postNotificationPermissionGranted: Boolean? = null
     private var exactAlarmPermissionGranted: Boolean? = null
+    
+    // Spotify timeout handling
+    private val handler = Handler(Looper.getMainLooper())
+    private var spotifyTimeoutRunnable: Runnable? = null
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -141,6 +147,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupActionButtonListeners() {
+        // Spotify button setup
+        val btnOpenSpotify = findViewById<ImageButton>(R.id.btnOpenSpotify)
+        btnOpenSpotify.setOnClickListener {
+            // Lazy initialization - only create SpotifyManager when user interacts with controls
+            if (spotifyManager == null) {
+                spotifyManager = SpotifyManager(this)
+            }
+            val actionExecuted = spotifyManager!!.handleSpotifyAppClick()
+            if (!actionExecuted) {
+                Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
+                
+                // Set up 10-second timeout to open Spotify app directly
+                spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
+                spotifyTimeoutRunnable = Runnable {
+                    if (spotifyManager?.isPlayerReady != true) {
+                        Toast.makeText(this, "Opening Spotify app directly", Toast.LENGTH_SHORT).show()
+                        openSpotifyAppDirectly()
+                    }
+                }
+                handler.postDelayed(spotifyTimeoutRunnable!!, 10000) // 10 seconds
+            } else {
+                // Cancel timeout if action was executed successfully
+                spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
+            }
+        }
+        
         // Clear button setup
         val btnClear = findViewById<ImageButton>(R.id.btnClear)
         btnClear.setOnClickListener {
@@ -312,6 +344,8 @@ class MainActivity : AppCompatActivity() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver)
         calendarSetup?.cleanup()
         spotifyManager?.disconnect()
+        // Clean up Spotify timeout
+        spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
         super.onDestroy()
     }
 
@@ -322,6 +356,26 @@ class MainActivity : AppCompatActivity() {
             packageManager.getApplicationLabel(applicationInfo).toString()
         } catch (e: Exception) {
             packageName // fallback if not found
+        }
+    }
+
+    private fun openSpotifyAppDirectly() {
+        try {
+            val intent = packageManager.getLaunchIntentForPackage("com.spotify.music")
+            if (intent != null) {
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "Spotify not installed", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error opening Spotify", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun cancelSpotifyTimeout() {
+        spotifyTimeoutRunnable?.let { 
+            handler.removeCallbacks(it)
+            spotifyTimeoutRunnable = null
         }
     }
 
@@ -520,46 +574,51 @@ class MainActivity : AppCompatActivity() {
         val tvArtist = findViewById<TextView>(R.id.tvArtist)
         val ivAlbum = findViewById<ImageView>(R.id.ivAlbum)
 
-        // Lazy initialization - only create SpotifyManager when user interacts with controls
-        fun initializeSpotifyIfNeeded(): SpotifyManager {
-            if (spotifyManager == null) {
-                spotifyManager = SpotifyManager(this)
-            }
-            return spotifyManager!!
-        }
 
         btnPlayPause.setOnClickListener {
-            val manager = initializeSpotifyIfNeeded()
-            val actionExecuted = manager.handlePlayPauseClick()
-            if (!actionExecuted) {
-                Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
+            if (spotifyManager != null) {
+                val actionExecuted = spotifyManager!!.handlePlayPauseClick()
+                if (!actionExecuted) {
+                    Toast.makeText(this, "Connect Spotify first using the Spotify button", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Connect Spotify first using the Spotify button", Toast.LENGTH_SHORT).show()
             }
         }
 
         btnPrev.setOnClickListener {
-            val manager = initializeSpotifyIfNeeded()
-            val actionExecuted = manager.handlePreviousClick()
-            if (!actionExecuted) {
-                Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
+            if (spotifyManager != null) {
+                val actionExecuted = spotifyManager!!.handlePreviousClick()
+                if (!actionExecuted) {
+                    Toast.makeText(this, "Connect Spotify first using the Spotify button", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Connect Spotify first using the Spotify button", Toast.LENGTH_SHORT).show()
             }
         }
 
         btnNext.setOnClickListener {
-            val manager = initializeSpotifyIfNeeded()
-            val actionExecuted = manager.handleNextClick()
-            if (!actionExecuted) {
-                Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
+            if (spotifyManager != null) {
+                val actionExecuted = spotifyManager!!.handleNextClick()
+                if (!actionExecuted) {
+                    Toast.makeText(this, "Connect Spotify first using the Spotify button", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Connect Spotify first using the Spotify button", Toast.LENGTH_SHORT).show()
             }
         }
 
-        // Setup click listeners for album art/text to open Spotify
+        // Setup click listeners for album art/text to open Spotify (only when connected)
         val clickableViews = listOf(ivAlbum, tvTrack, tvArtist)
         clickableViews.forEach { view ->
             view.setOnClickListener {
-                val manager = initializeSpotifyIfNeeded()
-                val actionExecuted = manager.handleSpotifyAppClick()
-                if (!actionExecuted) {
-                    Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
+                if (spotifyManager != null) {
+                    val actionExecuted = spotifyManager!!.handleSpotifyAppClick()
+                    if (!actionExecuted) {
+                        Toast.makeText(this, "Connect Spotify first using the Spotify button", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this, "Connect Spotify first using the Spotify button", Toast.LENGTH_SHORT).show()
                 }
             }
         }

@@ -28,7 +28,8 @@ class SpotifyManager(private val activity: Activity) {
     private var currentTrackUri: String? = null
     private var currentContextUri: String? = null
     private var isInitialized = false
-    private var isPlayerReady = false
+    var isPlayerReady = false
+        private set
     
     // Auto-disconnect functionality
     private val handler = Handler(Looper.getMainLooper())
@@ -55,6 +56,10 @@ class SpotifyManager(private val activity: Activity) {
                 spotifyAppRemote = appRemote
                 subscribeToPlayerState()
                 isPlayerReady = true
+                // Cancel any pending timeout in MainActivity
+                if (activity is MainActivity) {
+                    (activity as MainActivity).cancelSpotifyTimeout()
+                }
             }
             override fun onFailure(throwable: Throwable) {
                 isPlayerReady = false
@@ -83,24 +88,10 @@ class SpotifyManager(private val activity: Activity) {
         AuthorizationClient.openLoginActivity(activity, authTokenRequestCode, request)
     }
 
-    private fun initializeIfNeeded() {
-        if (!isInitialized) {
-            start()
-            isInitialized = true
-        }
-    }
 
-    private fun setupPlayerIfNeeded(): Boolean {
-        if (!isPlayerReady) {
-            initializeIfNeeded()
-            connect()
-            return false // Setup initiated, action should wait
-        }
-        return true // Player ready, action can proceed
-    }
 
     fun handlePlayPauseClick(): Boolean {
-        if (!setupPlayerIfNeeded()) return false
+        if (!isPlayerReady) return false
         
         spotifyAppRemote?.playerApi?.playerState?.setResultCallback { playerState ->
             if (playerState.isPaused) {
@@ -113,21 +104,29 @@ class SpotifyManager(private val activity: Activity) {
     }
 
     fun handlePreviousClick(): Boolean {
-        if (!setupPlayerIfNeeded()) return false
+        if (!isPlayerReady) return false
         
         spotifyAppRemote?.playerApi?.skipPrevious()
         return true
     }
 
     fun handleNextClick(): Boolean {
-        if (!setupPlayerIfNeeded()) return false
+        if (!isPlayerReady) return false
         
         spotifyAppRemote?.playerApi?.skipNext()
         return true
     }
 
     fun handleSpotifyAppClick(): Boolean {
-        if (!setupPlayerIfNeeded()) return false
+        if (!isPlayerReady) {
+            // If not ready, set up the player
+            if (!isInitialized) {
+                start()
+                isInitialized = true
+            }
+            connect()
+            return false
+        }
         
         openInSpotify()
         return true

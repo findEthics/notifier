@@ -7,7 +7,7 @@ A minimal Android launcher with notification management, optimized Spotify contr
 ### 🚀 Core Functionality
 - **Minimal Android Launcher**: Can be set as default home launcher with clean, efficient interface
 - **Smart Notification Management**: Centralized notification center with swipe-to-dismiss and tap-to-open functionality
-- **Battery-Optimized Spotify Integration**: Two-touch interaction system ensures reliable track information retrieval
+- **Enhanced Spotify Integration**: Dedicated connection button with 10-second timeout fallback and streamlined control system
 - **Smart Calendar Integration**: Intelligent event caching with battery-efficient daily refresh and past event filtering
 - **Quick App Launchers**: Fast access to WhatsApp, Claude Assistant, and Maps applications
 - **Volume & Ring Mode Control**: Toggle between mute/unmute and ring/vibrate modes
@@ -122,8 +122,9 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 ### 📱 Daily Use
 1. **Notification Management**: View all captured notifications, tap to open source app, or swipe to dismiss
 2. **Spotify Control**: 
-   - First touch: Sets up Spotify player (authentication and connection)
-   - Second touch: Executes intended action (play/pause, skip, open Spotify)
+   - Dedicated Spotify button: Handles connection setup with 10-second timeout fallback
+   - Control buttons: Play/pause, previous/next only work when connected
+   - Album art/text: Click to open Spotify app (when connected)
 3. **Calendar Access**: Click current date display to access calendar with smart caching and contextual permission requests
 4. **Quick App Access**: Use buttons for WhatsApp, Claude Assistant, and Maps
 5. **System Controls**: Toggle mute/vibrate modes with dedicated buttons
@@ -174,7 +175,8 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 - **Memory efficient** - features only exist when actively used
 
 ### 📱 User Experience
-- **Two-touch Spotify interaction** - reliable player status before actions
+- **Streamlined Spotify interaction** - dedicated connection button with automatic fallback
+- **Smart timeout handling** - 10-second fallback to direct app opening if connection fails
 - **Progressive permission requests** - clear context for why permissions are needed
 - **Instant feedback** - toast messages guide user through setup processes
 - **Home launcher capability** - can replace default Android launcher
@@ -213,9 +215,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Spotify not connecting**
 - Make sure Spotify app is installed and logged in
-- Remember: First touch sets up player, second touch executes action
+- Use the dedicated Spotify button (next to volume controls) to establish connection
+- Wait up to 10 seconds for connection - app will automatically open Spotify if connection fails
 - Check that the redirect URI matches in both the app and Spotify Developer Dashboard
-- Wait for "Setting up Spotify player..." message to complete before second touch
+- Control buttons only work after successful connection via the Spotify button
 
 **Calendar events not loading**
 - Click the current date display to trigger contextual permission requests
