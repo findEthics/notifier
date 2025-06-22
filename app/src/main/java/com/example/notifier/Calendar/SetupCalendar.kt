@@ -51,6 +51,7 @@ class SetupCalendar(private val activity: Activity) {
 
     }
     private val prefs: SharedPreferences = activity.getSharedPreferences(GoogleApiConstants.PREFS_NAME, Context.MODE_PRIVATE)
+    private val cacheManager = CalendarCacheManager(activity)
 
     fun handleCalendarButtonClick() {
 
@@ -232,7 +233,18 @@ class SetupCalendar(private val activity: Activity) {
         return null
     }
 
-    suspend fun fetchCalendarEvents(accessToken: String): List<CalendarEvent>? {
+    suspend fun fetchCalendarEvents(accessToken: String, forceRefresh: Boolean = false): List<CalendarEvent>? {
+        // Check cache first unless force refresh is requested
+        if (!forceRefresh) {
+            val cachedEvents = cacheManager.getCachedEvents()
+            if (cachedEvents != null) {
+                activity.runOnUiThread {
+                    Toast.makeText(activity, "Using cached events", Toast.LENGTH_SHORT).show()
+                }
+                return cachedEvents
+            }
+        }
+
         val calendar = Calendar.getInstance()
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
         sdf.timeZone = TimeZone.getDefault()
@@ -267,6 +279,13 @@ class SetupCalendar(private val activity: Activity) {
                         // Add the parsed event to our list
                         eventsList.add(CalendarEvent(summary, startTime))
                     }
+                }
+
+                // Cache the fresh events
+                cacheManager.cacheEvents(eventsList)
+                
+                activity.runOnUiThread {
+                    Toast.makeText(activity, "Fetched fresh events", Toast.LENGTH_SHORT).show()
                 }
 
                 // SCHEDULING LOGIC ---
@@ -339,5 +358,15 @@ class SetupCalendar(private val activity: Activity) {
     // Call this when your activity/app is being destroyed to clean up the Ktor client
     fun cleanup() {
         httpClient.close()
+    }
+    
+    // Add method to force refresh calendar events
+    suspend fun refreshCalendarEvents(): List<CalendarEvent>? {
+        val accessToken = getValidAccessToken()
+        return if (accessToken != null) {
+            fetchCalendarEvents(accessToken, forceRefresh = true)
+        } else {
+            null
+        }
     }
 }

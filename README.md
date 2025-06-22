@@ -8,13 +8,15 @@ A minimal Android launcher with notification management, optimized Spotify contr
 - **Minimal Android Launcher**: Can be set as default home launcher with clean, efficient interface
 - **Smart Notification Management**: Centralized notification center with swipe-to-dismiss and tap-to-open functionality
 - **Battery-Optimized Spotify Integration**: Two-touch interaction system ensures reliable track information retrieval
-- **Contextual Calendar Integration**: Lazy permission requests and integrated date display with clickable calendar access
+- **Smart Calendar Integration**: Intelligent event caching with battery-efficient daily refresh and past event filtering
 - **Quick App Launchers**: Fast access to WhatsApp, Claude Assistant, and Maps applications
 - **Volume & Ring Mode Control**: Toggle between mute/unmute and ring/vibrate modes
 
 ### ⚡ Performance Optimizations
 - **Lazy Initialization**: Spotify and Calendar components only load when needed
 - **Fast App Startup**: ~50ms improvement from deferred expensive operations  
+- **Intelligent Calendar Caching**: Daily event storage with midnight expiration reduces API calls
+- **Smart Event Filtering**: Real-time past event filtering with 15-minute grace period
 - **Contextual Permissions**: Calendar permissions only requested when calendar is accessed
 - **Battery Efficient**: Minimal background processing and smart connection management
 - **Memory Optimized**: Features consume memory only when actively used
@@ -90,7 +92,8 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 - **MainActivity**: Main launcher activity with lazy initialization patterns for optimal performance
 - **AppNotificationListenerService**: Background service for notification interception and filtering  
 - **SpotifyManager**: Battery-efficient Spotify integration with two-touch interaction system
-- **SetupCalendar**: Contextual Google Calendar integration with lazy permission requests
+- **SetupCalendar**: Smart Google Calendar integration with intelligent caching and lazy permission requests
+- **CalendarCacheManager**: Battery-efficient daily event caching with automatic past event filtering
 - **NotificationAdapter**: RecyclerView adapter for displaying captured notifications with swipe gestures
 
 ### Performance Architecture
@@ -108,7 +111,7 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 - **Authentication**: 
   - Spotify Android SDK for music integration
   - Google OAuth 2.0 for calendar access
-- **Data Storage**: SharedPreferences for app settings
+- **Data Storage**: SharedPreferences for app settings and intelligent calendar event caching
 - **Architecture**: MVVM pattern with Repository pattern for data management
 
 ## Usage
@@ -121,13 +124,15 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 2. **Spotify Control**: 
    - First touch: Sets up Spotify player (authentication and connection)
    - Second touch: Executes intended action (play/pause, skip, open Spotify)
-3. **Calendar Access**: Click current date display to access calendar with contextual permission requests
+3. **Calendar Access**: Click current date display to access calendar with smart caching and contextual permission requests
 4. **Quick App Access**: Use buttons for WhatsApp, Claude Assistant, and Maps
 5. **System Controls**: Toggle mute/vibrate modes with dedicated buttons
 
 ### 🔋 Performance Features
 - **Fast Startup**: No background loading - features initialize only when needed
 - **Battery Efficient**: Spotify and Calendar only active during use
+- **Smart Calendar Caching**: Events cached daily with automatic midnight expiration
+- **Intelligent Event Filtering**: Past events filtered in real-time with 15-minute grace period
 - **Smart Permissions**: Context-aware permission requests with user guidance
 
 ## Dependencies
@@ -162,6 +167,8 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 
 ### 🔋 Battery Efficiency  
 - **Lazy Spotify integration** - only connects when user interacts with controls
+- **Intelligent Calendar Caching** - daily event storage minimizes API calls
+- **Smart Event Management** - automatic past event filtering reduces processing
 - **Contextual permission requests** - no permission dialogs on app startup
 - **Smart connection management** - disconnects when not in use
 - **Memory efficient** - features only exist when actively used
@@ -212,6 +219,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Calendar events not loading**
 - Click the current date display to trigger contextual permission requests
+- Check for "Using cached events" or "Fetched fresh events" toast messages for status
+- If cache is stale, events will automatically refresh at midnight or on force refresh
 - Verify Google API credentials are correctly configured in `local.properties`
 - Ensure the Google Calendar API is enabled in Google Cloud Console
 - Check that the OAuth consent screen is properly configured
