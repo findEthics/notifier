@@ -69,15 +69,26 @@ class SetupCalendar(private val activity: Activity) {
                     Toast.makeText(activity, "Failed to fetch events", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                // If we don't have a token, start the full login flow
-                triggerAuthenticationFlow { events ->
-                    if (events != null) {
-                        val intent = Intent(activity, CalendarActivity::class.java).apply {
-                            putParcelableArrayListExtra("EVENTS_LIST", ArrayList(events))
+                // If we don't have a token, first check cache before triggering auth flow
+                val cachedEvents = cacheManager.getCachedEvents()
+                if (cachedEvents != null) {
+                    // Show cached events immediately
+                    Toast.makeText(activity, "Using cached events", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(activity, CalendarActivity::class.java).apply {
+                        putParcelableArrayListExtra("EVENTS_LIST", ArrayList(cachedEvents))
+                    }
+                    activity.startActivity(intent)
+                } else {
+                    // If no cache, start the full login flow
+                    triggerAuthenticationFlow { events ->
+                        if (events != null) {
+                            val intent = Intent(activity, CalendarActivity::class.java).apply {
+                                putParcelableArrayListExtra("EVENTS_LIST", ArrayList(events))
+                            }
+                            activity.startActivity(intent)
+                        } else {
+                            Toast.makeText(activity, "Authentication failed", Toast.LENGTH_SHORT).show()
                         }
-                        activity.startActivity(intent)
-                    } else {
-                        Toast.makeText(activity, "Authentication failed", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
