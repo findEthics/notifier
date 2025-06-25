@@ -8,9 +8,8 @@ import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
-class AppNotificationListenerService : NotificationListenerService() {
+class AppNotificationListenerService : NotificationListenerService(), NotificationServiceController {
     private val allowedPackages = setOf(
         "com.whatsapp","com.mudita.messages","com.mudita.calendar","com.example.notifier"
         // Only listen for notifications from these apps
@@ -74,9 +73,25 @@ class AppNotificationListenerService : NotificationListenerService() {
             result?.let { broadcastIntents.add(it) }
         }
 
-        // Send all broadcasts in a single batch
+        // Send all notifications through the communication manager
         for (intent in broadcastIntents) {
-            LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+            when (intent.action) {
+                "NEW_NOTIFICATION" -> {
+                    val notification = NotificationUpdate(
+                        key = intent.getStringExtra("key") ?: "",
+                        title = intent.getStringExtra("title") ?: "",
+                        text = intent.getStringExtra("text") ?: "",
+                        packageName = intent.getStringExtra("package") ?: "",
+                        systemKey = intent.getStringExtra("systemKey") ?: "",
+                        isGroupSummary = intent.getBooleanExtra("isGroupSummary", false)
+                    )
+                    NotificationCommunicationManager.notifyNewNotification(notification)
+                }
+                "REMOVE_NOTIFICATION" -> {
+                    val key = intent.getStringExtra("key") ?: ""
+                    NotificationCommunicationManager.notifyRemoveNotification(key)
+                }
+            }
         }
     }
 
@@ -125,11 +140,7 @@ class AppNotificationListenerService : NotificationListenerService() {
             // Remove previous summary for this group
             summaryKeys[sbn.packageName]?.let { oldKey ->
                 if (oldKey != newSummaryKey) {
-                    LocalBroadcastManager.getInstance(this).sendBroadcast(
-                        Intent("REMOVE_NOTIFICATION").apply {
-                            putExtra("key", oldKey)
-                        }
-                    )
+                    NotificationCommunicationManager.notifyRemoveNotification(oldKey)
                 }
             }
 
@@ -156,35 +167,26 @@ class AppNotificationListenerService : NotificationListenerService() {
         }
     }
 
-    // Receiver to handle cancellation
-    private val cancelReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val key = intent.getStringExtra("key") ?: return
-            activeNotifications[key]?.let { sbn ->
-                cancelNotification(sbn.key) // Cancel the system notification
-                activeNotifications.remove(key)
-                seenKeys.remove(key.split("|").last()) // Remove individual notification key
-                if (key.startsWith("SUMMARY")) { // 3. Handle group summaries
-                    summaryKeys.values.remove(key)
-                }
+    // Implementation of NotificationServiceController interface
+    override fun cancelNotification(key: String) {
+        activeNotifications[key]?.let { sbn ->
+            cancelNotification(sbn.key) // Cancel the system notification
+            activeNotifications.remove(key)
+            seenKeys.remove(key.split("|").last()) // Remove individual notification key
+            if (key.startsWith("SUMMARY")) { // Handle group summaries
+                summaryKeys.values.remove(key)
             }
         }
     }
 
-    private val cancelSystemReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            cancelNotification(intent.getStringExtra("systemKey"))
-        }
+    override fun cancelSystemNotification(systemKey: String) {
+        cancelNotification(systemKey)
     }
 
     override fun onCreate() {
         super.onCreate()
-//        LocalBroadcastManager.getInstance(this)
-//            .registerReceiver(refreshReceiver, IntentFilter("FORCE_REFRESH"))
-        LocalBroadcastManager.getInstance(this)
-            .registerReceiver(cancelReceiver, IntentFilter("CANCEL_NOTIFICATION"))
-        LocalBroadcastManager.getInstance(this)
-            .registerReceiver(cancelSystemReceiver, IntentFilter("CANCEL_SYSTEM_NOTIFICATION"))
+        // Register as the service controller
+        NotificationCommunicationManager.registerServiceController(this)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
@@ -206,7 +208,8 @@ class AppNotificationListenerService : NotificationListenerService() {
     override fun onDestroy() {
         // Clean up batching handler
         handler.removeCallbacks(batchProcessor)
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(cancelReceiver)
+        // Unregister from communication manager
+        NotificationCommunicationManager.unregisterServiceController()
         super.onDestroy()
     }
 

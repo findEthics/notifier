@@ -5,10 +5,8 @@ import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.media.AudioManager
@@ -22,7 +20,6 @@ import android.widget.TextView
 import android.widget.Toast
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -35,7 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), NotificationCallback {
     private val notifications = mutableListOf<NotificationData>()
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: NotificationAdapter
@@ -63,37 +60,27 @@ class MainActivity : AppCompatActivity() {
     private var dateUpdateRunnable: Runnable? = null
     private var lastDisplayedDate: String? = null
 
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                "NEW_NOTIFICATION" -> {
-                    val key = intent.getStringExtra("key") ?: return
-                    val title = intent.getStringExtra("title") ?: ""
-                    val text = intent.getStringExtra("text") ?: ""
-                    val packageName = intent.getStringExtra("package") ?: ""
-                    val appName = getAppName(packageName)
-                    val systemKey = intent.getStringExtra("systemKey") ?: return
+    // Implementation of NotificationCallback interface
+    override fun onNewNotification(notification: NotificationUpdate) {
+        val appName = getAppName(notification.packageName)
 
-                    notifications.removeAll { it.key == key } // Prevent duplicates
+        notifications.removeAll { it.key == notification.key } // Prevent duplicates
 
-                    // Add new notification at top
-                    notifications.add(0, NotificationData(
-                        title = title,
-                        text = text,
-                        packageName = packageName,
-                        appName = appName,
-                        key = key,
-                        systemKey = systemKey
-                    ))
-                    adapter.notifyDataSetChanged()
-                }
-                "REMOVE_NOTIFICATION" -> {
-                    val key = intent.getStringExtra("key") ?: return
-                    val removed = notifications.removeAll { it.key == key }
-                    if (removed) adapter.notifyDataSetChanged()
-                }
-            }
-        }
+        // Add new notification at top
+        notifications.add(0, NotificationData(
+            title = notification.title,
+            text = notification.text,
+            packageName = notification.packageName,
+            appName = appName,
+            key = notification.key,
+            systemKey = notification.systemKey
+        ))
+        adapter.notifyDataSetChanged()
+    }
+
+    override fun onRemoveNotification(key: String) {
+        val removed = notifications.removeAll { it.key == key }
+        if (removed) adapter.notifyDataSetChanged()
     }
 
     // Activity Result Launcher for POST_NOTIFICATIONS permission
@@ -146,11 +133,8 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         setupSwipeToDelete()
 
-        val filter = IntentFilter().apply {
-            addAction("NEW_NOTIFICATION")
-            addAction("REMOVE_NOTIFICATION")
-        }
-        LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter)
+        // Register as the activity callback
+        NotificationCommunicationManager.registerActivityCallback(this)
 
     }
 
@@ -297,12 +281,8 @@ class MainActivity : AppCompatActivity() {
             // Remove from local list
             notifications.removeAll { it.key == notificationData.key }
             adapter.notifyDataSetChanged()
-            // Send cancellation command to service
-            LocalBroadcastManager.getInstance(this).sendBroadcast(
-                Intent("CANCEL_NOTIFICATION").apply {
-                    putExtra("key", notificationData.key)
-                }
-            )
+            // Send cancellation command to service through communication manager
+            NotificationCommunicationManager.requestCancelNotification(notificationData.key)
         }
 
         recyclerView.apply {
@@ -331,17 +311,9 @@ class MainActivity : AppCompatActivity() {
                 notifications.removeAt(position)
                 adapter.notifyItemRemoved(position)
 
-                // Notify service to cancel the system notification
-                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(
-                    Intent("CANCEL_NOTIFICATION").apply {
-                        putExtra("key", notification.key)
-                    }
-                )
-                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(
-                    Intent("CANCEL_SYSTEM_NOTIFICATION").apply {
-                        putExtra("systemKey", notification.systemKey)
-                    }
-                )
+                // Notify service to cancel the system notification through communication manager
+                NotificationCommunicationManager.requestCancelNotification(notification.key)
+                NotificationCommunicationManager.requestCancelSystemNotification(notification.systemKey)
             }
         }
         ItemTouchHelper(swipeToDeleteCallback).attachToRecyclerView(recyclerView)
@@ -356,7 +328,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver)
+        // Unregister from communication manager
+        NotificationCommunicationManager.unregisterActivityCallback()
         calendarSetup?.cleanup()
         spotifyManager?.disconnect()
         // Clean up Spotify timeout
