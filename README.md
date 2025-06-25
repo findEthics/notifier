@@ -7,18 +7,19 @@ A minimal Android launcher with notification management, optimized Spotify contr
 ### 🚀 Core Functionality
 - **Minimal Android Launcher**: Can be set as default home launcher with clean, efficient interface
 - **Smart Notification Management**: Centralized notification center with swipe-to-dismiss and tap-to-open functionality
-- **Enhanced Spotify Integration**: Dedicated connection button with 10-second timeout fallback and streamlined control system
-- **Smart Calendar Integration**: Intelligent event caching with battery-efficient daily refresh and past event filtering
+- **Dynamic Spotify Integration**: Smart player visibility with dedicated connection button, 10-second timeout fallback, and 2-minute auto-disconnect
+- **Smart Calendar Integration**: Intelligent event caching with battery-efficient daily refresh, past event filtering, and token expiration resilience
 - **Quick App Launchers**: Fast access to WhatsApp, Claude Assistant, and Maps applications
 - **Volume & Ring Mode Control**: Toggle between mute/unmute and ring/vibrate modes
 
 ### ⚡ Performance Optimizations
 - **Lazy Initialization**: Spotify and Calendar components only load when needed
 - **Fast App Startup**: ~50ms improvement from deferred expensive operations  
-- **Intelligent Calendar Caching**: Daily event storage with midnight expiration reduces API calls
+- **Dynamic UI Visibility**: Spotify controls hidden by default, shown only when connected
+- **Intelligent Calendar Caching**: Daily event storage with midnight expiration and token expiration resilience
 - **Smart Event Filtering**: Real-time past event filtering with 15-minute grace period
 - **Contextual Permissions**: Calendar permissions only requested when calendar is accessed
-- **Battery Efficient**: Minimal background processing and smart connection management
+- **Battery Efficient**: 2-minute auto-disconnect, minimal background processing, and smart connection management
 - **Memory Optimized**: Features consume memory only when actively used
 
 ## Screenshots
@@ -121,18 +122,21 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 
 ### 📱 Daily Use
 1. **Notification Management**: View all captured notifications, tap to open source app, or swipe to dismiss
-2. **Spotify Control**: 
-   - Dedicated Spotify button: Handles connection setup with 10-second timeout fallback
-   - Control buttons: Play/pause, previous/next only work when connected
+2. **Dynamic Spotify Control**: 
+   - Hidden by default for clean interface
+   - Dedicated Spotify button: Shows controls and handles connection setup with 10-second timeout fallback
+   - Control buttons: Play/pause, previous/next only visible when connected
+   - Auto-hide: Controls disappear after 2 minutes of inactivity or when disconnected
    - Album art/text: Click to open Spotify app (when connected)
-3. **Calendar Access**: Click current date display to access calendar with smart caching and contextual permission requests
+3. **Calendar Access**: Click current date display to access calendar with smart caching, token expiration resilience, and contextual permission requests
 4. **Quick App Access**: Use buttons for WhatsApp, Claude Assistant, and Maps
 5. **System Controls**: Toggle mute/vibrate modes with dedicated buttons
 
 ### 🔋 Performance Features
 - **Fast Startup**: No background loading - features initialize only when needed
-- **Battery Efficient**: Spotify and Calendar only active during use
-- **Smart Calendar Caching**: Events cached daily with automatic midnight expiration
+- **Dynamic UI**: Spotify controls hidden by default, shown only when needed
+- **Battery Efficient**: 2-minute auto-disconnect, Spotify and Calendar only active during use
+- **Smart Calendar Caching**: Events cached daily with automatic midnight expiration and token expiration fallback
 - **Intelligent Event Filtering**: Past events filtered in real-time with 15-minute grace period
 - **Smart Permissions**: Context-aware permission requests with user guidance
 
@@ -167,17 +171,21 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 - **Minimal onCreate() overhead** - deferred expensive operations
 
 ### 🔋 Battery Efficiency  
+- **Dynamic Spotify UI** - controls hidden by default, shown only when connected
+- **2-minute auto-disconnect** - faster disconnect for improved battery life
 - **Lazy Spotify integration** - only connects when user interacts with controls
-- **Intelligent Calendar Caching** - daily event storage minimizes API calls
+- **Intelligent Calendar Caching** - daily event storage minimizes API calls with token expiration resilience
 - **Smart Event Management** - automatic past event filtering reduces processing
 - **Contextual permission requests** - no permission dialogs on app startup
 - **Smart connection management** - disconnects when not in use
 - **Memory efficient** - features only exist when actively used
 
 ### 📱 User Experience
-- **Streamlined Spotify interaction** - dedicated connection button with automatic fallback
+- **Clean Interface** - Spotify controls hidden until needed for minimal distraction
+- **Streamlined Spotify interaction** - dedicated connection button with automatic fallback and smart visibility
 - **Smart timeout handling** - 10-second fallback to direct app opening if connection fails
 - **Progressive permission requests** - clear context for why permissions are needed
+- **Calendar token resilience** - shows cached events when authentication expires
 - **Instant feedback** - toast messages guide user through setup processes
 - **Home launcher capability** - can replace default Android launcher
 
@@ -216,13 +224,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Spotify not connecting**
 - Make sure Spotify app is installed and logged in
 - Use the dedicated Spotify button (next to volume controls) to establish connection
+- Spotify controls will appear when you click the connection button
 - Wait up to 10 seconds for connection - app will automatically open Spotify if connection fails
+- Controls automatically hide after 2 minutes of inactivity or when disconnected
 - Check that the redirect URI matches in both the app and Spotify Developer Dashboard
 - Control buttons only work after successful connection via the Spotify button
 
 **Calendar events not loading**
 - Click the current date display to trigger contextual permission requests
 - Check for "Using cached events" or "Fetched fresh events" toast messages for status
+- When tokens expire, cached events are shown automatically with "Using cached events" message
 - If cache is stale, events will automatically refresh at midnight or on force refresh
 - Verify Google API credentials are correctly configured in `local.properties`
 - Ensure the Google Calendar API is enabled in Google Cloud Console
