@@ -168,7 +168,7 @@ class AppNotificationListenerService : NotificationListenerService(), Notificati
     }
 
     // Implementation of NotificationServiceController interface
-    override fun cancelNotification(key: String) {
+    override fun cancelNotificationByKey(key: String) {
         activeNotifications[key]?.let { sbn ->
             cancelNotification(sbn.key) // Cancel the system notification
             activeNotifications.remove(key)

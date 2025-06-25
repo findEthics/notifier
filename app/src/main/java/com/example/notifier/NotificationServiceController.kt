@@ -1,6 +1,6 @@
 package com.example.notifier
 
 interface NotificationServiceController {
-    fun cancelNotification(key: String)
+    fun cancelNotificationByKey(key: String)
     fun cancelSystemNotification(systemKey: String)
 }

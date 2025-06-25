@@ -40,7 +40,7 @@ object NotificationCommunicationManager {
     }
     
     fun requestCancelNotification(key: String) {
-        serviceControllerRef?.get()?.cancelNotification(key)
+        serviceControllerRef?.get()?.cancelNotificationByKey(key)
     }
     
     fun requestCancelSystemNotification(systemKey: String) {
