@@ -20,6 +20,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -129,6 +130,9 @@ class MainActivity : AppCompatActivity() {
         setupCurrentDate()
         setupVolumeAndRingControls()
         setupSpotifyControls()
+        
+        // Initialize Spotify controls as hidden
+        hideSpotifyControls()
 
         // Calendar functionality moved to date display
         setupDateDisplayCalendar()
@@ -154,9 +158,12 @@ class MainActivity : AppCompatActivity() {
         // Spotify button setup
         val btnOpenSpotify = findViewById<ImageButton>(R.id.btnOpenSpotify)
         btnOpenSpotify.setOnClickListener {
+            // Show Spotify controls immediately when user clicks
+            showSpotifyControls()
+            
             // Lazy initialization - only create SpotifyManager when user interacts with controls
             if (spotifyManager == null) {
-                spotifyManager = SpotifyManager(this)
+                spotifyManager = SpotifyManager(this, ::hideSpotifyControls)
             }
             val actionExecuted = spotifyManager!!.handleSpotifyAppClick()
             if (!actionExecuted) {
@@ -168,6 +175,8 @@ class MainActivity : AppCompatActivity() {
                     if (spotifyManager?.isPlayerReady != true) {
                         Toast.makeText(this, "Opening Spotify app directly", Toast.LENGTH_SHORT).show()
                         openSpotifyAppDirectly()
+                        // Hide controls if connection failed after timeout
+                        hideSpotifyControls()
                     }
                 }
                 handler.postDelayed(spotifyTimeoutRunnable!!, 50000) // 10 seconds
@@ -385,6 +394,16 @@ class MainActivity : AppCompatActivity() {
             handler.removeCallbacks(it)
             spotifyTimeoutRunnable = null
         }
+    }
+
+    private fun showSpotifyControls() {
+        val spotifyControls = findViewById<View>(R.id.spotify_controls)
+        spotifyControls.visibility = View.VISIBLE
+    }
+
+    private fun hideSpotifyControls() {
+        val spotifyControls = findViewById<View>(R.id.spotify_controls)
+        spotifyControls.visibility = View.GONE
     }
 
 

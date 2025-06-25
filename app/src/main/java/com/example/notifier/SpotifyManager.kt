@@ -18,7 +18,7 @@ import com.spotify.sdk.android.auth.AuthorizationClient
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
 
-class SpotifyManager(private val activity: Activity) {
+class SpotifyManager(private val activity: Activity, private val onDisconnectCallback: (() -> Unit)? = null) {
     // --- Spotify Constants and Properties ---
     private val clientID = BuildConfig.SPOTIFY_CLIENT_ID
     private val redirectURI = "notifier://callback"
@@ -35,7 +35,7 @@ class SpotifyManager(private val activity: Activity) {
     private val handler = Handler(Looper.getMainLooper())
     private var autoDisconnectRunnable: Runnable? = null
     private var isPlaying = false
-    private val autoDisconnectDelay = 5 * 60 * 1000L // 5 minutes
+    private val autoDisconnectDelay = 2 * 60 * 1000L // Disconnect after 2 minutes of paused state
 
     // --- Public Functions to be called from MainActivity ---
 
@@ -75,6 +75,8 @@ class SpotifyManager(private val activity: Activity) {
             spotifyAppRemote = null
             isPlayerReady = false
         }
+        // Notify MainActivity to hide controls
+        onDisconnectCallback?.invoke()
     }
 
     private fun startSpotifyAuth() {
