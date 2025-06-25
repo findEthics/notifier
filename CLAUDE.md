@@ -1,10 +1,10 @@
 # Notifier App - Claude Code Project Context
 
 ## Project Overview
-Minimal Android launcher app with notification management, Spotify controls, and calendar integration. Optimized for performance with lazy initialization patterns and contextual permission requests.
+Minimal Android launcher app with notification management, dynamic Spotify controls, and intelligent calendar integration. Optimized for performance with lazy initialization patterns, contextual permission requests, and smart UI visibility management.
 
 ## Current Branch: minimal
-Latest commit includes date display with integrated calendar functionality.
+Latest commit includes dynamic Spotify player visibility control, 2-minute auto-disconnect, and calendar token expiration resilience.
 
 ## Architecture & Major Optimizations
 
@@ -29,6 +29,21 @@ Latest commit includes date display with integrated calendar functionality.
 - **Date Display Integration**: Current date shown in "Wed, June 18" format with integrated calendar functionality
 - **Streamlined Layout**: Calendar button removed, functionality moved to clickable date display
 
+#### 4. **Dynamic Spotify Player Visibility** ✅ (Latest)
+- **Hidden by Default**: Spotify controls start hidden for clean interface
+- **Smart Visibility**: Controls appear only when user clicks Spotify button
+- **Auto-Hide on Disconnect**: Controls disappear when Spotify disconnects or times out
+- **2-Minute Auto-Disconnect**: Reduced from 5 minutes for better battery efficiency
+- **Connection Status Callbacks**: SpotifyManager notifies MainActivity of visibility changes
+- **Result**: Cleaner UI, better battery life, contextual control display
+
+#### 5. **Calendar Token Expiration Resilience** ✅ (Latest)
+- **Cache Fallback**: Shows cached events when authentication tokens expire
+- **Graceful Degradation**: Users see events even when API calls fail
+- **Smart Cache Checking**: Checks cache before forcing re-authentication
+- **User Feedback**: Clear toast messages for cache vs fresh events
+- **Result**: More reliable calendar experience, reduced authentication friction
+
 ## Key Components
 
 ### MainActivity
@@ -38,18 +53,23 @@ Latest commit includes date display with integrated calendar functionality.
 - **Lazy Features**: Calendar and Spotify only initialized on user interaction
 - **Smart Permissions**: Calendar permissions requested contextually
 - **Date Display**: Dynamic current date with clickable calendar integration
-- **Layout**: Date on leftmost side, volume controls (mute, ring/vibrate) on rightmost side
+- **Spotify Visibility Control**: `showSpotifyControls()` and `hideSpotifyControls()` methods
+- **Layout**: Date on leftmost side, Spotify button, volume controls (mute, ring/vibrate) on rightmost side
 
 ### SpotifyManager
-- Spotify SDK integration with on-demand connection
+- Spotify SDK integration with on-demand connection and visibility callbacks
 - Methods: `handlePlayPauseClick()`, `handlePreviousClick()`, `handleNextClick()`, `handleSpotifyAppClick()`
-- **Optimization**: No automatic connection on app startup
+- **Constructor**: Accepts optional `onDisconnectCallback` for visibility control
+- **Auto-Disconnect**: 2-minute timer with callback to hide controls
+- **Optimization**: No automatic connection on app startup, smart visibility management
 
 ### CalendarSetup (Calendar/SetupCalendar.kt)
 - Google Calendar API with OAuth2 authentication
 - Ktor HTTP client for API calls
 - **Optimization**: Only created when calendar button is clicked
 - **Permissions**: Handles POST_NOTIFICATIONS and SCHEDULE_EXACT_ALARM contextually
+- **Token Resilience**: Falls back to cached events when authentication tokens expire
+- **Smart Cache Logic**: Checks cache before forcing re-authentication in `handleCalendarButtonClick()`
 
 ### NotificationAdapter
 - Handles notification display and management
@@ -92,6 +112,9 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 ## Recent Optimizations History
 
 ### Latest (Current):
+- ✅ **Dynamic Spotify Player Visibility**: Controls hidden by default, shown only when connected, auto-hide on disconnect
+- ✅ **2-Minute Auto-Disconnect**: Reduced from 5 minutes for better battery efficiency with visibility callbacks
+- ✅ **Calendar Token Expiration Resilience**: Shows cached events when authentication tokens expire
 - ✅ **Enhanced Spotify Integration**: Added dedicated Spotify connection button with 10-second timeout fallback
 - ✅ **Streamlined Spotify Controls**: Removed connection logic from play/pause/next/prev buttons
 - ✅ **Smart Timeout Handling**: Automatic fallback to direct app opening if connection fails
@@ -133,10 +156,10 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 
 ### Core Features:
 - **Notification Management**: View, dismiss, and interact with notifications
-- **Enhanced Spotify Integration**: Dedicated connection button with 10-second timeout fallback
-- **Streamlined Spotify Controls**: Play/pause, previous/next only work when connected
-- **Calendar Integration**: View events and set reminders (via clickable date display)
-- **Smart Calendar Caching**: Daily event storage with midnight expiration
+- **Dynamic Spotify Integration**: Smart visibility control, 2-minute auto-disconnect, dedicated connection button with 10-second timeout fallback
+- **Streamlined Spotify Controls**: Play/pause, previous/next only visible and work when connected
+- **Calendar Integration**: View events and set reminders (via clickable date display) with token expiration resilience
+- **Smart Calendar Caching**: Daily event storage with midnight expiration and fallback for expired tokens
 - **Past Event Filtering**: Only display future events with 15-minute grace period
 - **Volume Controls**: Mute, ring/vibrate toggle with dedicated Spotify button
 - **Date Display**: Dynamic current date in "Wed, June 18" format
@@ -145,9 +168,10 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 
 ### Performance Characteristics:
 - **Fast Startup**: ~50ms improvement from lazy loading
+- **Clean Interface**: Dynamic UI visibility reduces visual clutter
 - **Low Memory**: Features only consume memory when used
 - **Responsive UI**: No blocking operations on main thread
-- **Battery Efficient**: Minimal background processing
+- **Battery Efficient**: 2-minute auto-disconnect, minimal background processing, smart visibility management
 
 ## Development Notes
 
@@ -163,9 +187,24 @@ adb shell cmd package set-home-activity com.example.notifier/.MainActivity
 - Separation of concerns
 - Error handling with fallbacks
 
-Last Updated: 2024 - After implementing enhanced Spotify integration with dedicated connection button and intelligent calendar caching system
+Last Updated: 2024 - After implementing dynamic Spotify player visibility control, 2-minute auto-disconnect, and calendar token expiration resilience
 
 ## Latest Technical Changes
+
+### Dynamic Spotify Player Visibility Control:
+- **Hidden by Default**: Controls start hidden (`View.GONE`) for clean interface
+- **Show on Connection**: `showSpotifyControls()` called when user clicks Spotify button
+- **Hide on Disconnect**: `hideSpotifyControls()` called via callback when disconnected
+- **Constructor Callback**: SpotifyManager accepts `onDisconnectCallback: (() -> Unit)?` parameter
+- **Auto-Hide on Timeout**: Controls hidden if connection fails after 10-second timeout
+- **Battery Optimization**: 2-minute auto-disconnect (reduced from 5 minutes)
+
+### Calendar Token Expiration Resilience:
+- **Cache Fallback Logic**: In `handleCalendarButtonClick()`, checks cache before triggering authentication
+- **Graceful Token Handling**: When `getValidAccessToken()` returns null, shows cached events instead of forcing auth
+- **User Experience**: "Using cached events" toast when showing fallback data
+- **Seamless Operation**: Users see calendar events even when tokens expire
+- **Smart Recovery**: Re-authentication only required if both token AND cache are invalid
 
 ### Enhanced Spotify Integration:
 - **Dedicated Connection Button**: New Spotify button positioned between date display and volume controls
@@ -184,8 +223,13 @@ Last Updated: 2024 - After implementing enhanced Spotify integration with dedica
 
 ### Current Layout Structure:
 ```
-[Spotify Controls Row]
+[Spotify Controls Row] ← Hidden by default, shown when connected
 [Date Display] ---------> [Spotify Button] [Mute Button] [Ring/Vibrate Button]
 [Horizontal Divider]
 [Notification List]
 ```
+
+### Key Code Changes:
+- **MainActivity.kt**: Added `showSpotifyControls()` and `hideSpotifyControls()` methods
+- **SpotifyManager.kt**: Constructor now accepts disconnect callback, 2-minute timer
+- **SetupCalendar.kt**: Enhanced `handleCalendarButtonClick()` with cache fallback logic
