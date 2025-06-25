@@ -52,10 +52,6 @@ class CalendarCacheManager(context: Context) {
         return cachedDate == currentDate
     }
     
-    fun clearCache() {
-        sharedPreferences.edit().clear().apply()
-    }
-    
     private fun getCurrentDateString(): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         sdf.timeZone = TimeZone.getDefault()
@@ -97,5 +93,19 @@ class CalendarCacheManager(context: Context) {
         } catch (e: Exception) {
             0L
         }
+    }
+
+    fun getPreviousCachedEvents(): List<CalendarEvent>? {
+        val eventsJson = sharedPreferences.getString(KEY_CACHED_EVENTS, null) ?: return null
+        return try {
+            val type = object : TypeToken<List<CalendarEvent>>() {}.type
+            gson.fromJson<List<CalendarEvent>>(eventsJson, type)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun clearCache() {
+        sharedPreferences.edit().clear().apply()
     }
 }

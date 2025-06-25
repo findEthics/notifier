@@ -57,4 +57,33 @@ class CalendarEventReminder {
             // This can happen for all-day events that don't have a specific time
         }
     }
+
+    fun cancelReminderForEvent(context: Context, event: CalendarEvent) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra("EVENT_SUMMARY", event.summary)
+            putExtra("EVENT_START_TIME", event.startTime)
+            putExtra("NOTIFICATION_ID", event.hashCode())
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            event.hashCode(), // Use the same request code as when scheduling
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Cancel the alarm
+        alarmManager.cancel(pendingIntent)
+        
+        // Cancel the pending intent to free up resources
+        pendingIntent.cancel()
+    }
+
+    fun cancelAllRemindersForEvents(context: Context, events: List<CalendarEvent>) {
+        events.forEach { event ->
+            cancelReminderForEvent(context, event)
+        }
+    }
 }

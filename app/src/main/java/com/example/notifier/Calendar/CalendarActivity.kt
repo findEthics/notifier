@@ -51,8 +51,8 @@ class CalendarActivity : AppCompatActivity() {
             CoroutineScope(Dispatchers.Main).launch {
                 val accessToken = calendarSetup.getValidAccessToken()
                 if (accessToken != null) {
-                    // If a token exists, just fetch the latest events
-                    val newEvents = calendarSetup.fetchCalendarEvents(accessToken)
+                    // If a token exists, just fetch the latest events with force refresh
+                    val newEvents = calendarSetup.fetchCalendarEvents(accessToken, forceRefresh = true)
                     if (newEvents != null) {
                         adapter.updateData(newEvents)
                         // Log.i("CalendarActivity", "Events refreshed successfully")

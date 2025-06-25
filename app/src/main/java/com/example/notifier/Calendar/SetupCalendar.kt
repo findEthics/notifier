@@ -278,6 +278,10 @@ class SetupCalendar(private val activity: Activity) {
             if (responseJson != null) {
                 val items = responseJson.optJSONArray("items")
                 val eventsList = ArrayList<CalendarEvent>()
+                val now = Calendar.getInstance()
+                val gracePeriodMillis = 15 * 60 * 1000 // 15 minutes
+                val cutoffTime = now.timeInMillis - gracePeriodMillis
+                
                 if (items != null) {
                     for (i in 0 until items.length()) {
                         val event = items.getJSONObject(i)
@@ -287,11 +291,31 @@ class SetupCalendar(private val activity: Activity) {
                         startObj?.let {
                             startTime = it.optString("dateTime", it.optString("date", "No Start Date"))
                         }
-                        // Add the parsed event to our list
-                        eventsList.add(CalendarEvent(summary, startTime))
+                        
+                        val calendarEvent = CalendarEvent(summary, startTime)
+                        
+                        // During force refresh, filter out past events (older than current time - 15 minutes)
+                        if (forceRefresh) {
+                            try {
+                                val eventTime = parseEventTime(startTime)
+                                // Only add events that are NOT in the past (>= cutoff time)
+                                if (eventTime >= cutoffTime) {
+                                    eventsList.add(calendarEvent)
+                                }
+                            } catch (e: Exception) {
+                                // Keep events with unparseable times during force refresh
+                                eventsList.add(calendarEvent)
+                            }
+                        } else {
+                            // During normal fetch (cache), add all events (filtering happens in cache manager)
+                            eventsList.add(calendarEvent)
+                        }
                     }
                 }
 
+                // Get previous cached events before replacing cache
+                val previousEvents = cacheManager.getPreviousCachedEvents() ?: emptyList()
+                
                 // Cache the fresh events
                 cacheManager.cacheEvents(eventsList)
                 
@@ -299,8 +323,22 @@ class SetupCalendar(private val activity: Activity) {
                     Toast.makeText(activity, "Fetched fresh events", Toast.LENGTH_SHORT).show()
                 }
 
-                // SCHEDULING LOGIC ---
+                // REMINDER SYNCHRONIZATION LOGIC ---
                 val reminderScheduler = CalendarEventReminder()
+                
+                // Find events that were removed (exist in previous but not in new)
+                val removedEvents = previousEvents.filter { oldEvent ->
+                    !eventsList.any { newEvent -> 
+                        newEvent.summary == oldEvent.summary && newEvent.startTime == oldEvent.startTime 
+                    }
+                }
+                
+                // Cancel reminders for removed events
+                if (removedEvents.isNotEmpty()) {
+                    reminderScheduler.cancelAllRemindersForEvents(activity, removedEvents)
+                }
+                
+                // Schedule reminders for all current events (new and existing)
                 eventsList.forEach { event ->
                     reminderScheduler.scheduleReminderForEvent(activity, event)
                 }
@@ -380,4 +418,27 @@ class SetupCalendar(private val activity: Activity) {
             null
         }
     }
+
+    private fun parseEventTime(startTime: String): Long {
+        return try {
+            if (startTime.contains("T")) {
+                // DateTime format: 2024-06-22T14:30:00-07:00
+                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
+                sdf.timeZone = TimeZone.getDefault()
+                sdf.parse(startTime)?.time ?: 0L
+            } else {
+                // Date format: 2024-06-22 (all-day event)
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                sdf.timeZone = TimeZone.getDefault()
+                val calendar = Calendar.getInstance()
+                calendar.time = sdf.parse(startTime) ?: java.util.Date()
+                calendar.set(Calendar.HOUR_OF_DAY, 23)
+                calendar.set(Calendar.MINUTE, 59)
+                calendar.timeInMillis
+            }
+        } catch (e: Exception) {
+            0L
+        }
+    }
+
 }
