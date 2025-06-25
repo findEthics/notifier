@@ -57,6 +57,10 @@ class MainActivity : AppCompatActivity() {
     // Spotify timeout handling
     private val handler = Handler(Looper.getMainLooper())
     private var spotifyTimeoutRunnable: Runnable? = null
+    
+    // Date update handling
+    private var dateUpdateRunnable: Runnable? = null
+    private var lastDisplayedDate: String? = null
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -166,7 +170,7 @@ class MainActivity : AppCompatActivity() {
                         openSpotifyAppDirectly()
                     }
                 }
-                handler.postDelayed(spotifyTimeoutRunnable!!, 10000) // 10 seconds
+                handler.postDelayed(spotifyTimeoutRunnable!!, 50000) // 10 seconds
             } else {
                 // Cancel timeout if action was executed successfully
                 spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
@@ -236,6 +240,8 @@ class MainActivity : AppCompatActivity() {
         verifySystemState()
         // Invalidate permission cache when returning from settings
         invalidatePermissionCache()
+        // Check if date has changed while app was in background
+        updateDateIfChanged()
     }
 
 
@@ -346,6 +352,8 @@ class MainActivity : AppCompatActivity() {
         spotifyManager?.disconnect()
         // Clean up Spotify timeout
         spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
+        // Clean up date update handler
+        dateUpdateRunnable?.let { handler.removeCallbacks(it) }
         super.onDestroy()
     }
 
@@ -382,11 +390,47 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun setupCurrentDate() {
-        val tvCurrentDate = findViewById<TextView>(R.id.tvCurrentDate)
+        updateDateIfChanged()
+        scheduleNextMidnightUpdate()
+    }
+    
+    private fun updateDateIfChanged() {
         val calendar = Calendar.getInstance()
         val dateFormat = SimpleDateFormat("EEE, MMMM d", Locale.getDefault())
         val currentDate = dateFormat.format(calendar.time)
-        tvCurrentDate.text = currentDate
+        
+        // Only update UI if date actually changed
+        if (currentDate != lastDisplayedDate) {
+            val tvCurrentDate = findViewById<TextView>(R.id.tvCurrentDate)
+            tvCurrentDate.text = currentDate
+            lastDisplayedDate = currentDate
+        }
+    }
+    
+    private fun scheduleNextMidnightUpdate() {
+        // Cancel any existing scheduled update
+        dateUpdateRunnable?.let { handler.removeCallbacks(it) }
+        
+        // Calculate time until next midnight
+        val now = Calendar.getInstance()
+        val nextMidnight = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_MONTH, 1)  // Tomorrow
+            set(Calendar.HOUR_OF_DAY, 0)   // 00:00
+            set(Calendar.MINUTE, 0)        // 00:00
+            set(Calendar.SECOND, 1)        // 00:01 (1 second after midnight)
+            set(Calendar.MILLISECOND, 0)
+        }
+        
+        val millisecondsUntilMidnight = nextMidnight.timeInMillis - now.timeInMillis
+        
+        // Create the update runnable
+        dateUpdateRunnable = Runnable {
+            updateDateIfChanged()           // Update the display
+            scheduleNextMidnightUpdate()    // Schedule next day's update
+        }
+        
+        // Schedule exactly at next midnight
+        handler.postDelayed(dateUpdateRunnable!!, millisecondsUntilMidnight)
     }
 
     private fun setupDateDisplayCalendar() {
