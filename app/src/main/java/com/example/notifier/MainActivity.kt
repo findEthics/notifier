@@ -5,7 +5,6 @@ import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -20,6 +19,7 @@ import android.widget.TextView
 import android.widget.Toast
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -42,9 +42,10 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     private var isVibrateMode = false
     private lateinit var audioManager: AudioManager
     private lateinit var sharedPrefs: SharedPreferences
-    private val PREFS_NAME = "AppSettings"
-    private val KEY_VIBRATE_MODE = "vibrate_mode"
-    private val KEY_MUTE_STATE = "mute_state"
+    private val prefsName = "AppSettings"
+    private val keyVibrateMode = "vibrate_mode"
+    private val keyMuteState = "mute_state"
+    private val keyDarkMode = "dark_mode_enabled"
     private var calendarSetup: SetupCalendar? = null
     private var spotifyManager: SpotifyManager? = null
     
@@ -100,14 +101,19 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize SharedPreferences FIRST
+        sharedPrefs = getSharedPreferences(prefsName, MODE_PRIVATE)
+        
+        // Apply theme before setting content view
+        applyTheme()
+        
         setContentView(R.layout.activity_main)
 
         // Spotify will be setup lazily when user interacts with controls
         // Calendar permissions will be checked when calendar button is clicked
 
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
-        // Initialize SharedPreferences HERE
-        sharedPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
         // Get current state of Vibrate and Mute
         isVibrateMode = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
@@ -125,6 +131,8 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         setupDateDisplayCalendar()
         // Setup action button listenerscommit the
         setupActionButtonListeners()
+        // Setup settings button
+        setupSettingsButton()
 
         if (!isNotificationServiceEnabled()) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -153,7 +161,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
             if (!actionExecuted) {
                 Toast.makeText(this, "Setting up Spotify player", Toast.LENGTH_SHORT).show()
                 
-                // Set up 10-second timeout to open Spotify app directly
+                // Set up 5-second timeout to open Spotify app directly
                 spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
                 spotifyTimeoutRunnable = Runnable {
                     if (spotifyManager?.isPlayerReady != true) {
@@ -163,7 +171,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
                         hideSpotifyControls()
                     }
                 }
-                handler.postDelayed(spotifyTimeoutRunnable!!, 50000) // 10 seconds
+                handler.postDelayed(spotifyTimeoutRunnable!!, 50000) // 5 seconds
             } else {
                 // Cancel timeout if action was executed successfully
                 spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
@@ -252,7 +260,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         val actualVibrate = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
         if (isVibrateMode != actualVibrate) {
             isVibrateMode = actualVibrate
-            sharedPrefs.edit().putBoolean(KEY_VIBRATE_MODE, actualVibrate).apply()
+            sharedPrefs.edit().putBoolean(keyVibrateMode, actualVibrate).apply()
             btnRingVibrate.setImageResource(if (isVibrateMode) R.drawable.ic_vibrate else R.drawable.ic_ring)
         }
 
@@ -260,7 +268,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         val actualMute = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0
         if (isMuted != actualMute) {
             isMuted = actualMute
-            sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, actualMute).apply()
+            sharedPrefs.edit().putBoolean(keyMuteState, actualMute).apply()
             btnMute.setImageResource(if (actualMute) R.drawable.ic_mute else R.drawable.ic_unmute)
         }
     }
@@ -458,7 +466,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
             }
             isVibrateMode = !isVibrateMode
             updateRingVibrateButton()
-            sharedPrefs.edit().putBoolean(KEY_VIBRATE_MODE, isVibrateMode).apply()
+            sharedPrefs.edit().putBoolean(keyVibrateMode, isVibrateMode).apply()
         }
 
         btnMute.setOnClickListener {
@@ -470,7 +478,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
             }
             isMuted = !isMuted
             updateMuteButton()
-            sharedPrefs.edit().putBoolean(KEY_MUTE_STATE, isMuted).apply()
+            sharedPrefs.edit().putBoolean(keyMuteState, isMuted).apply()
         }
     }
 
@@ -498,7 +506,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     private fun needsExactAlarmPermission(): Boolean {
         if (exactAlarmPermissionGranted == null) {
             exactAlarmPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
                 alarmManager.canScheduleExactAlarms()
             } else {
                 true // Not needed on older versions
@@ -583,7 +591,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
                 description = descriptionText
             }
             val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
     }
@@ -657,6 +665,37 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
                     Toast.makeText(this, "Connect Spotify first using the Spotify button", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
+
+    private fun applyTheme() {
+        val isDarkMode = sharedPrefs.getBoolean(keyDarkMode, false)
+        AppCompatDelegate.setDefaultNightMode(
+            if (isDarkMode) AppCompatDelegate.MODE_NIGHT_YES 
+            else AppCompatDelegate.MODE_NIGHT_NO
+        )
+    }
+
+    private fun toggleDarkMode() {
+        val isDarkMode = sharedPrefs.getBoolean(keyDarkMode, false)
+        val newMode = !isDarkMode
+        
+        sharedPrefs.edit().putBoolean(keyDarkMode, newMode).apply()
+        
+        AppCompatDelegate.setDefaultNightMode(
+            if (newMode) AppCompatDelegate.MODE_NIGHT_YES 
+            else AppCompatDelegate.MODE_NIGHT_NO
+        )
+        
+        Toast.makeText(this, 
+            if (newMode) "Dark mode enabled" else "Light mode enabled", 
+            Toast.LENGTH_SHORT).show()
+    }
+
+    private fun setupSettingsButton() {
+        val btnSettings = findViewById<ImageButton>(R.id.btnSettings)
+        btnSettings.setOnClickListener {
+            toggleDarkMode()
         }
     }
 
