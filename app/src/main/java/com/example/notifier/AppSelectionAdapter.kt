@@ -16,7 +16,7 @@ class AppSelectionAdapter(
 ) : RecyclerView.Adapter<AppSelectionAdapter.AppViewHolder>() {
 
     private val selectedApps = initialSelectedApps.toMutableSet()
-    private var filteredApps = allApps.toList() // Currently displayed apps
+    private var filteredApps = sortAppsBySelection(allApps) // Currently displayed apps
 
     class AppViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val appIcon: ImageView = itemView.findViewById(R.id.appIcon)
@@ -52,6 +52,10 @@ class AppSelectionAdapter(
             }
             android.util.Log.d("AppSelectionAdapter", "Selected apps now: ${selectedApps.size} total")
             onSelectionChanged(packageName, isChecked)
+            
+            // Re-sort the list to move selected/deselected apps to appropriate positions
+            filteredApps = sortAppsBySelection(filteredApps)
+            notifyDataSetChanged()
         }
         
         // Make the whole item clickable to toggle checkbox
@@ -68,13 +72,22 @@ class AppSelectionAdapter(
     }
     
     fun filter(query: String) {
-        filteredApps = if (query.isEmpty()) {
+        val appsToShow = if (query.isEmpty()) {
             allApps
         } else {
             allApps.filter { (_, appName, _) ->
                 appName.contains(query, ignoreCase = true)
             }
         }
+        filteredApps = sortAppsBySelection(appsToShow)
         notifyDataSetChanged()
+    }
+    
+    private fun sortAppsBySelection(apps: List<Triple<String, String, Drawable>>): List<Triple<String, String, Drawable>> {
+        return apps.sortedWith(compareBy<Triple<String, String, Drawable>> { (packageName, _, _) ->
+            !selectedApps.contains(packageName) // Selected apps first (false comes before true)
+        }.thenBy { (_, appName, _) ->
+            appName.lowercase() // Then sort alphabetically by app name
+        })
     }
 }

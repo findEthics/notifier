@@ -758,7 +758,11 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         val packageManager = packageManager
         val currentPackageName = packageName
         val installedApps = packageManager.getInstalledApplications(0)
-            .filter { it.packageName != currentPackageName } // Exclude this app
+            .filter { appInfo ->
+                // Only show apps that have a launch intent (launchable apps) and exclude this app
+                appInfo.packageName != currentPackageName && 
+                packageManager.getLaunchIntentForPackage(appInfo.packageName) != null
+            }
             .map { appInfo ->
                 val appName = packageManager.getApplicationLabel(appInfo).toString()
                 val appPackageName = appInfo.packageName
