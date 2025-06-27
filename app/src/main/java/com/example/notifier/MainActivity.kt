@@ -731,14 +731,28 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         val btnConfigureButton2 = dialogView.findViewById<android.widget.Button>(R.id.btnConfigureButton2)
         val btnConfigureButton3 = dialogView.findViewById<android.widget.Button>(R.id.btnConfigureButton3)
         
+        // Update button text with configured app names
+        updateSettingsButtonText(btnConfigureButton1, keyBottomButton1)
+        updateSettingsButtonText(btnConfigureButton2, keyBottomButton2)
+        updateSettingsButtonText(btnConfigureButton3, keyBottomButton3)
+        
         btnConfigureButton1.setOnClickListener {
-            showBottomButtonSelectionDialog(keyBottomButton1, "Left Button") { updateBottomButtonsLayout() }
+            showBottomButtonSelectionDialog(keyBottomButton1, "Left Button") { 
+                updateBottomButtonsLayout() 
+                updateSettingsButtonText(btnConfigureButton1, keyBottomButton1)
+            }
         }
         btnConfigureButton2.setOnClickListener {
-            showBottomButtonSelectionDialog(keyBottomButton2, "Middle Button") { updateBottomButtonsLayout() }
+            showBottomButtonSelectionDialog(keyBottomButton2, "Middle Button") { 
+                updateBottomButtonsLayout()
+                updateSettingsButtonText(btnConfigureButton2, keyBottomButton2)
+            }
         }
         btnConfigureButton3.setOnClickListener {
-            showBottomButtonSelectionDialog(keyBottomButton3, "Right Button") { updateBottomButtonsLayout() }
+            showBottomButtonSelectionDialog(keyBottomButton3, "Right Button") { 
+                updateBottomButtonsLayout()
+                updateSettingsButtonText(btnConfigureButton3, keyBottomButton3)
+            }
         }
         
         dialog.show()
@@ -870,6 +884,21 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+    
+    private fun updateSettingsButtonText(button: android.widget.Button, buttonKey: String) {
+        val packageName = getBottomButtonPackage(buttonKey, "")
+        if (packageName.isEmpty()) {
+            button.text = "Select App"
+        } else {
+            try {
+                val appInfo = packageManager.getApplicationInfo(packageName, 0)
+                val appName = packageManager.getApplicationLabel(appInfo).toString()
+                button.text = appName
+            } catch (e: Exception) {
+                button.text = "Select App"
+            }
+        }
     }
     
     private fun updateBottomButtonsLayout() {
