@@ -58,7 +58,7 @@ class SpotifyManager(private val activity: Activity, private val onDisconnectCal
                 isPlayerReady = true
                 // Cancel any pending timeout in MainActivity
                 if (activity is MainActivity) {
-                    (activity as MainActivity).cancelSpotifyTimeout()
+                    (activity).cancelSpotifyTimeout()
                 }
             }
             override fun onFailure(throwable: Throwable) {

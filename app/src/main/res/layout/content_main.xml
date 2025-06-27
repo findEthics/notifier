@@ -99,17 +99,6 @@
             android:clickable="true"
             android:focusable="true"/>
 
-        <!-- Settings Button -->
-        <ImageButton
-            android:id="@+id/btnSettings"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/ic_settings"
-            android:background="?android:attr/selectableItemBackground"
-            android:padding="8dp"
-            android:layout_marginStart="4dp"
-            android:contentDescription="Settings"/>
-
         <!-- Spacer to push buttons to the right -->
         <View
             android:layout_width="0dp"

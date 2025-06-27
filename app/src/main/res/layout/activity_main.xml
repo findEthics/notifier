@@ -8,6 +8,9 @@
     tools:context=".MainActivity">
 
     <include layout="@layout/content_main" />
+    
+    <!-- Full-screen App Drawer -->
+    <include layout="@layout/fullscreen_app_drawer" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/bottomButtonLayout"
@@ -21,6 +24,20 @@
         android:visibility="gone"> <!-- Hidden by default -->
 
         <ImageButton
+            android:id="@+id/btnAppDrawer"
+            android:layout_width="68dp"
+            android:layout_height="68dp"
+            android:src="@drawable/ic_menu"
+            android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="Open App Drawer"
+            android:padding="8dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/btnMaps"
+            app:layout_constraintHorizontal_chainStyle="spread_inside"/>
+
+        <ImageButton
             android:id="@+id/btnMaps"
             android:layout_width="68dp"
             android:layout_height="68dp"
@@ -30,9 +47,8 @@
             android:padding="8dp"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/btnAssistant"
-            app:layout_constraintHorizontal_chainStyle="spread_inside"/>
+            app:layout_constraintStart_toEndOf="@+id/btnAppDrawer"
+            app:layout_constraintEnd_toStartOf="@+id/btnAssistant"/>
 
         <ImageButton
             android:id="@+id/btnAssistant"

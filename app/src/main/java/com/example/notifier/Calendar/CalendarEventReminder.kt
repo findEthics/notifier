@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import java.time.OffsetDateTime
-import java.time.ZoneId
 
 class CalendarEventReminder {
 
@@ -50,7 +49,6 @@ class CalendarEventReminder {
                         reminderTimeMillis,
                         pendingIntent
                     )
-                } else {
                 }
             }
         } catch (e: Exception) {

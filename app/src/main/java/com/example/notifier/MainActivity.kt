@@ -72,6 +72,10 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     private lateinit var bottomButtonLayout: ConstraintLayout
     private var hideBottomLayoutRunnable: Runnable? = null
     private val BOTTOM_LAYOUT_HIDE_DELAY = 15000L // 15 seconds
+    
+    // App drawer handling
+    private lateinit var appDrawerLayout: ConstraintLayout
+    private var appDrawerAdapter: AppDrawerAdapter? = null
 
     // Implementation of NotificationCallback interface
     override fun onNewNotification(notification: NotificationUpdate) {
@@ -141,10 +145,8 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
 
         // Calendar functionality moved to date display
         setupDateDisplayCalendar()
-        // Setup action button listenerscommit the
+        // Setup action button listeners
         setupActionButtonListeners()
-        // Setup settings button
-        setupSettingsButton()
 
         if (!isNotificationServiceEnabled()) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -158,9 +160,19 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
 
         // Setup bottom layout gesture handling
         setupBottomLayoutGesture()
+        
+        // Setup app drawer
+        setupAppDrawer()
     }
 
     private fun setupActionButtonListeners() {
+        // App drawer button setup
+        val btnAppDrawer = findViewById<ImageButton>(R.id.btnAppDrawer)
+        btnAppDrawer.setOnClickListener {
+            resetBottomLayoutTimer()
+            showAppDrawer()
+        }
+        
         // Spotify button setup
         val btnOpenSpotify = findViewById<ImageButton>(R.id.btnOpenSpotify)
         btnOpenSpotify.setOnClickListener {
@@ -811,13 +823,91 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     private fun saveSelectedNotificationApps(apps: Set<String>) {
         sharedPrefs.edit().putStringSet("selected_notification_apps", apps).apply()
     }
-
-    private fun setupSettingsButton() {
-        val btnSettings = findViewById<ImageButton>(R.id.btnSettings)
-        btnSettings.setOnClickListener {
+    
+    private fun setupAppDrawer() {
+        appDrawerLayout = findViewById(R.id.appDrawerFullscreen)
+        
+        // Get all installed apps
+        val packageManager = packageManager
+        val installedApps = packageManager.getInstalledApplications(0)
+            .filter { appInfo ->
+                // Only show apps that have a launch intent (launchable apps)
+                packageManager.getLaunchIntentForPackage(appInfo.packageName) != null
+            }
+            .map { appInfo ->
+                val appName = packageManager.getApplicationLabel(appInfo).toString()
+                val appPackageName = appInfo.packageName
+                Triple(appPackageName, appName, appInfo.loadIcon(packageManager))
+            }
+            .sortedBy { it.second.lowercase() } // Sort by app name
+        
+        // Setup RecyclerView for app list
+        val recyclerView = appDrawerLayout.findViewById<RecyclerView>(R.id.appsDrawerRecyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        
+        appDrawerAdapter = AppDrawerAdapter(installedApps) { packageName ->
+            // Launch the selected app and close drawer
+            launchApp(packageName)
+            hideAppDrawer()
+        }
+        recyclerView.adapter = appDrawerAdapter
+        
+        // Setup search functionality
+        val searchEditText = appDrawerLayout.findViewById<android.widget.EditText>(R.id.searchAppsEditText)
+        searchEditText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val query = s?.toString() ?: ""
+                appDrawerAdapter?.filter(query)
+            }
+        })
+        
+        // Setup settings button in app drawer
+        val btnSettingsInDrawer = appDrawerLayout.findViewById<ImageButton>(R.id.btnSettingsInDrawer)
+        btnSettingsInDrawer?.setOnClickListener {
             showSettingsDialog()
         }
     }
+    
+    private fun showAppDrawer() {
+        // Hide bottom button layout when app drawer is shown
+        hideBottomLayout()
+        
+        appDrawerLayout.visibility = View.VISIBLE
+        appDrawerLayout.alpha = 0f
+        appDrawerLayout.animate()
+            .alpha(1f)
+            .setDuration(200)
+            .setListener(null)
+            .start()
+    }
+    
+    private fun hideAppDrawer() {
+        appDrawerLayout.animate()
+            .alpha(0f)
+            .setDuration(200)
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    appDrawerLayout.visibility = View.GONE
+                }
+            })
+            .start()
+    }
+    
+    private fun launchApp(packageName: String) {
+        try {
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            if (intent != null) {
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "Cannot launch this app", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error launching app", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     private fun setupBottomLayoutGesture() {
         bottomButtonLayout = findViewById(R.id.bottomButtonLayout)
@@ -850,8 +940,9 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     }
     
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        // Let gesture detector process the event first (if initialized)
-        if (::gestureDetector.isInitialized) {
+        // Only process swipe gestures if app drawer is not visible
+        if (::gestureDetector.isInitialized && 
+            !(::appDrawerLayout.isInitialized && appDrawerLayout.visibility == View.VISIBLE)) {
             gestureDetector.onTouchEvent(ev)
         }
         
@@ -926,6 +1017,15 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         NotificationCommunicationManager.unregisterActivityCallback()
         
         super.onDestroy()
+    }
+    
+    override fun onBackPressed() {
+        // If app drawer is visible, close it instead of exiting the app
+        if (::appDrawerLayout.isInitialized && appDrawerLayout.visibility == View.VISIBLE) {
+            hideAppDrawer()
+        } else {
+            super.onBackPressed()
+        }
     }
 
 }

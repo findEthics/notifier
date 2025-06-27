@@ -408,16 +408,6 @@ class SetupCalendar(private val activity: Activity) {
     fun cleanup() {
         httpClient.close()
     }
-    
-    // Add method to force refresh calendar events
-    suspend fun refreshCalendarEvents(): List<CalendarEvent>? {
-        val accessToken = getValidAccessToken()
-        return if (accessToken != null) {
-            fetchCalendarEvents(accessToken, forceRefresh = true)
-        } else {
-            null
-        }
-    }
 
     private fun parseEventTime(startTime: String): Long {
         return try {
