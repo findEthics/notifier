@@ -1087,11 +1087,13 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
             val cachedEvents = calendarCacheManager.getCachedEvents() ?: return emptyList()
             val now = System.currentTimeMillis()
             val thirtyMinutesFromNow = now + (30 * 60 * 1000)
+            val fiveMinutesAgo = now - (5 * 60 * 1000) // 5 minutes before current time
             
             val upcomingEvents = cachedEvents.filter { event ->
                 try {
                     val eventTime = parseEventTime(event.startTime)
-                    eventTime in now..thirtyMinutesFromNow
+                    // Show events that start within next 30 minutes OR started within last 5 minutes
+                    eventTime in fiveMinutesAgo..thirtyMinutesFromNow
                 } catch (e: Exception) {
                     false
                 }
