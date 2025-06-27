@@ -9,7 +9,7 @@ A minimal Android launcher with notification management, optimized Spotify contr
 - **Smart Notification Management**: Centralized notification center with swipe-to-dismiss and tap-to-open functionality
 - **Dynamic Spotify Integration**: Smart player visibility with dedicated connection button, 10-second timeout fallback, and 2-minute auto-disconnect
 - **Smart Calendar Integration**: Intelligent event caching with battery-efficient daily refresh, past event filtering, and token expiration resilience
-- **Quick App Launchers**: Fast access to WhatsApp, Claude Assistant, and Maps applications
+- **Configurable Quick Launch Buttons**: Customizable bottom layout buttons with user-selectable apps and dynamic icons
 - **Volume & Ring Mode Control**: Toggle between mute/unmute and ring/vibrate modes
 
 ### ⚡ Performance Optimizations
@@ -21,6 +21,7 @@ A minimal Android launcher with notification management, optimized Spotify contr
 - **Contextual Permissions**: Calendar permissions only requested when calendar is accessed
 - **Battery Efficient**: 2-minute auto-disconnect, minimal background processing, and smart connection management
 - **Memory Optimized**: Features consume memory only when actively used
+- **Smart App Filtering**: Notification selection shows only launchable apps, sorted by selection status
 
 ## Screenshots
 
@@ -129,7 +130,12 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
    - Auto-hide: Controls disappear after 2 minutes of inactivity or when disconnected
    - Album art/text: Click to open Spotify app (when connected)
 3. **Calendar Access**: Click current date display to access calendar with smart caching, token expiration resilience, and contextual permission requests
-4. **Quick App Access**: Use buttons for WhatsApp, Claude Assistant, and Maps
+4. **Configurable Quick Launch**: 
+   - **Swipe-up gesture**: Shows hidden bottom button layout with 15-second auto-hide
+   - **Customizable buttons**: Configure any launchable app for the three quick launch buttons
+   - **Settings configuration**: Go to Settings > Configure Quick Launch Buttons
+   - **Long-press customization**: Long-press any button to instantly reconfigure it
+   - **Dynamic icons**: Button icons automatically update to match selected apps
 5. **System Controls**: Toggle mute/vibrate modes with dedicated buttons
 
 ### 🔋 Performance Features
@@ -219,7 +225,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Notifications not appearing**
 - Ensure notification listener permission is granted in Settings > Notification access
-- Verify the app is in the allowed packages list in `AppNotificationListenerService.kt`
+- Configure notification apps in Settings > Select notification apps
+- Selected apps will be sorted to top of list for easy management
 
 **Spotify not connecting**
 - Make sure Spotify app is installed and logged in
@@ -238,6 +245,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Verify Google API credentials are correctly configured in `local.properties`
 - Ensure the Google Calendar API is enabled in Google Cloud Console
 - Check that the OAuth consent screen is properly configured
+
+**Quick Launch buttons not working**
+- **Swipe-up gesture**: Swipe up from bottom of screen to reveal hidden button layout
+- **Configuration**: Go to Settings > Configure Quick Launch Buttons or long-press any button
+- **Button order**: Left, Middle, Right buttons (default: Maps, Assistant, WhatsApp)
+- **Icons**: Button icons automatically update when apps are changed
+- **Auto-hide**: Buttons hide after 15 seconds of inactivity
 
 **Reminders not firing**
 - Grant "Allow setting alarms and reminders" permission in app settings

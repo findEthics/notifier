@@ -67,6 +67,98 @@
                 style="?android:attr/buttonStyleSmall" />
 
         </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Bottom Layout Buttons Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Configure Quick Launch Buttons"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Button 1 (Maps) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Left Button"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnConfigureButton1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Select App"
+                style="?android:attr/buttonStyleSmall" />
+
+        </LinearLayout>
+
+        <!-- Button 2 (Assistant) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Middle Button"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnConfigureButton2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Select App"
+                style="?android:attr/buttonStyleSmall" />
+
+        </LinearLayout>
+
+        <!-- Button 3 (WhatsApp) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Right Button"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnConfigureButton3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Select App"
+                style="?android:attr/buttonStyleSmall" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
 </ScrollView>

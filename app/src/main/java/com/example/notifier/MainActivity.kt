@@ -52,6 +52,11 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     private val keyVibrateMode = "vibrate_mode"
     private val keyMuteState = "mute_state"
     private val keyDarkMode = "dark_mode_enabled"
+    
+    // Bottom layout button configuration keys
+    private val keyBottomButton1 = "bottom_button_1_package" // Maps button
+    private val keyBottomButton2 = "bottom_button_2_package" // Assistant button  
+    private val keyBottomButton3 = "bottom_button_3_package" // WhatsApp button
     private var calendarSetup: SetupCalendar? = null
     private var spotifyManager: SpotifyManager? = null
     
@@ -211,54 +216,8 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
             notifications.clear()
             adapter.notifyDataSetChanged()
         }
-        //WhatsApp button setup
-        val openWhatsApp = findViewById<ImageButton>(R.id.btnWhatsApp)
-        openWhatsApp.setOnClickListener {
-            resetBottomLayoutTimer()
-            // Open WhatsApp
-            try {
-                val intent = packageManager.getLaunchIntentForPackage("com.whatsapp")
-                if (intent == null) {
-                    Toast.makeText(this, "WhatsApp not found", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(this, "WhatsApp not found", Toast.LENGTH_SHORT).show()
-            }
-        }
-        //Assistant button setup
-        val openAssistant = findViewById<ImageButton>(R.id.btnAssistant)
-        openAssistant.setOnClickListener {
-            resetBottomLayoutTimer()
-            // Open Claude Assistant
-            try {
-                val claudeIntent = packageManager.getLaunchIntentForPackage("com.anthropic.claude")
-                if (claudeIntent != null) {
-                    startActivity(claudeIntent)
-                } else {
-                    Toast.makeText(this, "No assistant or browser app found", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(this, "Error opening assistant", Toast.LENGTH_SHORT).show()
-            }
-        }
-        //Maps button setup
-        val openMaps = findViewById<ImageButton>(R.id.btnMaps)
-        openMaps.setOnClickListener {
-            resetBottomLayoutTimer()
-            try {
-                val intentGmapsWV = packageManager.getLaunchIntentForPackage("com.google.android.apps.mapslite")
-                if (intentGmapsWV != null) {
-                    startActivity(intentGmapsWV)
-                }
-                    else {
-                        Toast.makeText(this, "No Map apps or browser found", Toast.LENGTH_SHORT).show()
-                    }
-            } catch (e: PackageManager.NameNotFoundException) {
-                Toast.makeText(this, "No Map app found", Toast.LENGTH_SHORT).show()
-            }
-        }
+        // Setup configurable bottom buttons
+        setupBottomButtons()
     }
 
     override fun onStart() {
@@ -273,6 +232,8 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         invalidatePermissionCache()
         // Check if date has changed while app was in background
         updateDateIfChanged()
+        // Update bottom button icons in case configuration changed
+        updateBottomButtonsLayout()
     }
 
 
@@ -748,6 +709,21 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
             showAppSelectionDialog()
         }
         
+        // Bottom button configuration
+        val btnConfigureButton1 = dialogView.findViewById<android.widget.Button>(R.id.btnConfigureButton1)
+        val btnConfigureButton2 = dialogView.findViewById<android.widget.Button>(R.id.btnConfigureButton2)
+        val btnConfigureButton3 = dialogView.findViewById<android.widget.Button>(R.id.btnConfigureButton3)
+        
+        btnConfigureButton1.setOnClickListener {
+            showBottomButtonSelectionDialog(keyBottomButton1, "Left Button") { updateBottomButtonsLayout() }
+        }
+        btnConfigureButton2.setOnClickListener {
+            showBottomButtonSelectionDialog(keyBottomButton2, "Middle Button") { updateBottomButtonsLayout() }
+        }
+        btnConfigureButton3.setOnClickListener {
+            showBottomButtonSelectionDialog(keyBottomButton3, "Right Button") { updateBottomButtonsLayout() }
+        }
+        
         dialog.show()
     }
     
@@ -826,6 +802,151 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     
     private fun saveSelectedNotificationApps(apps: Set<String>) {
         sharedPrefs.edit().putStringSet("selected_notification_apps", apps).apply()
+    }
+    
+    // Bottom button configuration methods
+    private fun getBottomButtonPackage(buttonKey: String, defaultPackage: String): String {
+        return sharedPrefs.getString(buttonKey, defaultPackage) ?: defaultPackage
+    }
+    
+    private fun saveBottomButtonPackage(buttonKey: String, packageName: String) {
+        sharedPrefs.edit().putString(buttonKey, packageName).apply()
+    }
+    
+    private fun getConfiguredBottomButtons(): Triple<String, String, String> {
+        return Triple(
+            getBottomButtonPackage(keyBottomButton1, "com.google.android.apps.mapslite"), // Maps
+            getBottomButtonPackage(keyBottomButton2, "com.anthropic.claude"), // Assistant
+            getBottomButtonPackage(keyBottomButton3, "com.whatsapp") // WhatsApp
+        )
+    }
+    
+    private fun showBottomButtonSelectionDialog(buttonKey: String, buttonName: String, onSelectionComplete: () -> Unit) {
+        // Get all installed apps (reuse the same logic as app drawer)
+        val packageManager = packageManager
+        val installedApps = packageManager.getInstalledApplications(0)
+            .filter { appInfo ->
+                // Only show apps that have a launch intent (launchable apps)
+                packageManager.getLaunchIntentForPackage(appInfo.packageName) != null
+            }
+            .map { appInfo ->
+                val appName = packageManager.getApplicationLabel(appInfo).toString()
+                val appPackageName = appInfo.packageName
+                Triple(appPackageName, appName, appInfo.loadIcon(packageManager))
+            }
+            .sortedBy { it.second.lowercase() }
+        
+        // Create selection dialog
+        val appNames = installedApps.map { it.second }.toTypedArray()
+        val appPackages = installedApps.map { it.first }.toTypedArray()
+        
+        val currentPackage = getBottomButtonPackage(buttonKey, "")
+        val currentIndex = appPackages.indexOfFirst { it == currentPackage }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Select app for $buttonName")
+            .setSingleChoiceItems(appNames, currentIndex) { dialog, which ->
+                val selectedPackage = appPackages[which]
+                saveBottomButtonPackage(buttonKey, selectedPackage)
+                onSelectionComplete()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun updateBottomButtonsLayout() {
+        val (package1, package2, package3) = getConfiguredBottomButtons()
+        val packageManager = packageManager
+        
+        // Update button 1 (Maps/Left)
+        try {
+            val btnMaps = findViewById<ImageButton>(R.id.btnMaps)
+            val appInfo1 = packageManager.getApplicationInfo(package1, 0)
+            btnMaps.setImageDrawable(appInfo1.loadIcon(packageManager))
+        } catch (e: Exception) {
+            // Keep default icon if app not found
+        }
+        
+        // Update button 2 (Assistant/Middle)
+        try {
+            val btnAssistant = findViewById<ImageButton>(R.id.btnAssistant)
+            val appInfo2 = packageManager.getApplicationInfo(package2, 0)
+            btnAssistant.setImageDrawable(appInfo2.loadIcon(packageManager))
+        } catch (e: Exception) {
+            // Keep default icon if app not found
+        }
+        
+        // Update button 3 (WhatsApp/Right)
+        try {
+            val btnWhatsApp = findViewById<ImageButton>(R.id.btnWhatsApp)
+            val appInfo3 = packageManager.getApplicationInfo(package3, 0)
+            btnWhatsApp.setImageDrawable(appInfo3.loadIcon(packageManager))
+        } catch (e: Exception) {
+            // Keep default icon if app not found
+        }
+    }
+    
+    private fun setupBottomButtons() {
+        val (package1, package2, package3) = getConfiguredBottomButtons()
+        
+        // Button 1 (Maps/Left)
+        val btnMaps = findViewById<ImageButton>(R.id.btnMaps)
+        btnMaps.setOnClickListener {
+            resetBottomLayoutTimer()
+            launchConfiguredApp(package1)
+        }
+        btnMaps.setOnLongClickListener {
+            resetBottomLayoutTimer()
+            showBottomButtonSelectionDialog(keyBottomButton1, "Left Button") { updateBottomButtonsLayout() }
+            true
+        }
+        
+        // Button 2 (Assistant/Middle)
+        val btnAssistant = findViewById<ImageButton>(R.id.btnAssistant)
+        btnAssistant.setOnClickListener {
+            resetBottomLayoutTimer()
+            launchConfiguredApp(package2)
+        }
+        btnAssistant.setOnLongClickListener {
+            resetBottomLayoutTimer()
+            showBottomButtonSelectionDialog(keyBottomButton2, "Middle Button") { updateBottomButtonsLayout() }
+            true
+        }
+        
+        // Button 3 (WhatsApp/Right)
+        val btnWhatsApp = findViewById<ImageButton>(R.id.btnWhatsApp)
+        btnWhatsApp.setOnClickListener {
+            resetBottomLayoutTimer()
+            launchConfiguredApp(package3)
+        }
+        btnWhatsApp.setOnLongClickListener {
+            resetBottomLayoutTimer()
+            showBottomButtonSelectionDialog(keyBottomButton3, "Right Button") { updateBottomButtonsLayout() }
+            true
+        }
+        
+        // Update icons to match configured apps
+        updateBottomButtonsLayout()
+    }
+    
+    private fun launchConfiguredApp(packageName: String) {
+        try {
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            if (intent != null) {
+                startActivity(intent)
+            } else {
+                val appName = try {
+                    val appInfo = packageManager.getApplicationInfo(packageName, 0)
+                    packageManager.getApplicationLabel(appInfo).toString()
+                } catch (e: Exception) {
+                    "App"
+                }
+                Toast.makeText(this, "$appName not found or cannot be launched", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error launching app", Toast.LENGTH_SHORT).show()
+        }
     }
     
     private fun setupAppDrawer() {
