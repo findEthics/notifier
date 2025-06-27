@@ -4,14 +4,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@android:color/white">
+    android:background="?android:attr/colorBackground">
 
     <LinearLayout
         android:id="@+id/topPanel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="@android:color/white"
+        android:background="?android:attr/colorBackground"
         android:padding="8dp">
         <TextView
             android:id="@+id/calendarTitle"
@@ -21,7 +21,7 @@
             android:text="Today's Events"
             android:textSize="24sp"
             android:textStyle="bold"
-            android:textColor="@android:color/black"
+            android:textColor="?android:attr/textColorPrimary"
             android:gravity="start|center" />
 
         <Space
@@ -51,7 +51,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="3dp"
-        android:background="@android:color/black" />
+        android:background="?android:attr/textColorSecondary" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/calendar_recyclerView"
