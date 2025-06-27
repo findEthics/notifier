@@ -1,19 +1,18 @@
 package com.example.notifier
-
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 
 class AppNotificationListenerService : NotificationListenerService(), NotificationServiceController {
-    private val allowedPackages = setOf(
-        "com.whatsapp","com.mudita.messages","com.mudita.calendar","com.example.notifier"
-        // Only listen for notifications from these apps
-    )
+    private lateinit var sharedPrefs: SharedPreferences
+    
+    private fun getAllowedPackages(): Set<String> {
+        val defaultApps = setOf("com.whatsapp", "com.mudita.messages", "com.mudita.calendar", "com.example.notifier")
+        return sharedPrefs.getStringSet("selected_notification_apps", defaultApps) ?: defaultApps
+    }
     private val ignoreWhatsappNotification = setOf(
         "Ringing…","Calling…", "Ongoing voice call"
     )
@@ -32,6 +31,7 @@ class AppNotificationListenerService : NotificationListenerService(), Notificati
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         // Immediate filtering and cancellation for unwanted notifications
+        val allowedPackages = getAllowedPackages()
         if (sbn.packageName !in allowedPackages) {
             cancelNotification(sbn.key)
             return
@@ -185,6 +185,8 @@ class AppNotificationListenerService : NotificationListenerService(), Notificati
 
     override fun onCreate() {
         super.onCreate()
+        // Initialize SharedPreferences
+        sharedPrefs = getSharedPreferences("AppSettings", MODE_PRIVATE)
         // Register as the service controller
         NotificationCommunicationManager.registerServiceController(this)
     }

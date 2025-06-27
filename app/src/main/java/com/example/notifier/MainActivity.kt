@@ -692,10 +692,123 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
             Toast.LENGTH_SHORT).show()
     }
 
+    private fun showSettingsDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_settings, null)
+        
+        // Create the main settings dialog with explicit theme context
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Settings")
+            .setView(dialogView)
+            .setNegativeButton("Close", null)
+            .create()
+        
+        // Dark mode toggle
+        val btnToggleDarkMode = dialogView.findViewById<ImageButton>(R.id.btnToggleDarkMode)
+        fun updateDarkModeIcon() {
+            val isDarkMode = sharedPrefs.getBoolean(keyDarkMode, false)
+            btnToggleDarkMode.setImageResource(
+                if (isDarkMode) R.drawable.ic_light_mode else R.drawable.ic_dark_mode
+            )
+        }
+        updateDarkModeIcon()
+        
+        btnToggleDarkMode.setOnClickListener {
+            // Close dialog before toggling dark mode to prevent window leak
+            dialog.dismiss()
+            toggleDarkMode()
+            // Reopen settings dialog after a longer delay to allow activity recreation and theme application
+            Handler(Looper.getMainLooper()).postDelayed({
+                // Ensure the new activity instance shows the dialog with updated theme
+                showSettingsDialog()
+            }, 300)
+        }
+        
+        // App selection button
+        val btnSelectApps = dialogView.findViewById<android.widget.Button>(R.id.btnSelectApps)
+        btnSelectApps.setOnClickListener {
+            showAppSelectionDialog()
+        }
+        
+        dialog.show()
+    }
+    
+    private fun showAppSelectionDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_app_selection, null)
+        
+        // Get all installed apps
+        val packageManager = packageManager
+        val currentPackageName = packageName
+        val installedApps = packageManager.getInstalledApplications(0)
+            .filter { it.packageName != currentPackageName } // Exclude this app
+            .map { appInfo ->
+                val appName = packageManager.getApplicationLabel(appInfo).toString()
+                val appPackageName = appInfo.packageName
+                Triple(appPackageName, appName, appInfo.loadIcon(packageManager))
+            }
+            .sortedBy { it.second.lowercase() } // Sort by app name
+        
+        // Add this app at the top
+        val thisAppInfo = packageManager.getApplicationInfo(currentPackageName, 0)
+        val thisAppName = packageManager.getApplicationLabel(thisAppInfo).toString()
+        val thisAppIcon = thisAppInfo.loadIcon(packageManager)
+        val allApps = listOf(Triple(currentPackageName, "$thisAppName (This App)", thisAppIcon)) + installedApps
+        
+        // Get current selected apps
+        val selectedApps = getSelectedNotificationApps()
+        
+        // Setup RecyclerView for app selection
+        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.appsRecyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        
+        val appAdapter = AppSelectionAdapter(allApps, selectedApps) { packageName: String, isChecked: Boolean ->
+            // Handle checkbox change
+        }
+        recyclerView.adapter = appAdapter
+        
+        // Setup search functionality
+        val searchEditText = dialogView.findViewById<android.widget.EditText>(R.id.searchEditText)
+        searchEditText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val query = s?.toString() ?: ""
+                appAdapter.filter(query)
+            }
+        })
+        
+        // Create and show the app selection dialog
+        AlertDialog.Builder(this)
+            .setTitle("Select Apps for Notifications")
+            .setView(dialogView)
+            .setPositiveButton("Save") { _, _ ->
+                // Save selected apps
+                val newSelectedApps = appAdapter.getSelectedApps()
+                android.util.Log.d("MainActivity", "Saving ${newSelectedApps.size} selected apps: $newSelectedApps")
+                saveSelectedNotificationApps(newSelectedApps)
+                
+                // Verify saved apps
+                val savedApps = getSelectedNotificationApps()
+                android.util.Log.d("MainActivity", "Verified saved apps: $savedApps")
+                
+                Toast.makeText(this, "Notification apps updated (${newSelectedApps.size} apps)", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun getSelectedNotificationApps(): Set<String> {
+        val defaultApps = setOf("com.whatsapp", "com.mudita.messages", "com.mudita.calendar", "com.example.notifier")
+        return sharedPrefs.getStringSet("selected_notification_apps", defaultApps) ?: defaultApps
+    }
+    
+    private fun saveSelectedNotificationApps(apps: Set<String>) {
+        sharedPrefs.edit().putStringSet("selected_notification_apps", apps).apply()
+    }
+
     private fun setupSettingsButton() {
         val btnSettings = findViewById<ImageButton>(R.id.btnSettings)
         btnSettings.setOnClickListener {
-            toggleDarkMode()
+            showSettingsDialog()
         }
     }
 
