@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:id="@+id/tvEventTime"
+        android:layout_width="60dp"
+        android:layout_height="wrap_content"
+        android:text="10:30"
+        android:textSize="14sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textStyle="bold"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/tvEventTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Meeting Title"
+        android:textSize="14sp"
+        android:textColor="?android:attr/textColorPrimary"
+        android:layout_marginStart="12dp"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+</LinearLayout>

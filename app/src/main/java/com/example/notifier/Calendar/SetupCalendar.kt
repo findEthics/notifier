@@ -9,6 +9,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.browser.customtabs.CustomTabsIntent
 import com.example.notifier.GoogleApiConstants
+import com.example.notifier.MainActivity
 import io.ktor.client.HttpClient // Ktor HTTP Client
 import io.ktor.client.engine.cio.CIO // Ktor CIO Engine
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation // Ktor Content Negotiation
@@ -251,6 +252,10 @@ class SetupCalendar(private val activity: Activity) {
             if (cachedEvents != null) {
                 activity.runOnUiThread {
                     Toast.makeText(activity, "Using cached events", Toast.LENGTH_SHORT).show()
+                    // Trigger upcoming events refresh in MainActivity if it's the activity
+                    if (activity is MainActivity) {
+                        activity.refreshUpcomingEvents()
+                    }
                 }
                 return cachedEvents
             }
@@ -292,7 +297,13 @@ class SetupCalendar(private val activity: Activity) {
                             startTime = it.optString("dateTime", it.optString("date", "No Start Date"))
                         }
                         
-                        val calendarEvent = CalendarEvent(summary, startTime)
+                        val endObj = event.optJSONObject("end")
+                        var endTime = "No End Time"
+                        endObj?.let {
+                            endTime = it.optString("dateTime", it.optString("date", "No End Date"))
+                        }
+                        
+                        val calendarEvent = CalendarEvent(summary, startTime, endTime)
                         
                         // During force refresh, filter out past events (older than current time - 15 minutes)
                         if (forceRefresh) {
@@ -342,6 +353,14 @@ class SetupCalendar(private val activity: Activity) {
                 eventsList.forEach { event ->
                     reminderScheduler.scheduleReminderForEvent(activity, event)
                 }
+                
+                // Trigger upcoming events refresh in MainActivity if it's the activity
+                if (activity is MainActivity) {
+                    activity.runOnUiThread {
+                        activity.refreshUpcomingEvents()
+                    }
+                }
+                
                 return eventsList // Return the list
             }
         } catch (e: Exception) {

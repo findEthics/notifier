@@ -142,13 +142,44 @@
 
     </LinearLayout>
 
+    <!-- Upcoming Events Layout -->
+    <LinearLayout
+        android:id="@+id/upcoming_events_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/control_buttons"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvUpcomingEventsHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Current &amp; Upcoming Events"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Container for events - will be populated dynamically -->
+        <LinearLayout
+            android:id="@+id/events_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </LinearLayout>
+
     <!-- Black horizontal divider line -->
     <View
         android:id="@+id/divider_line"
         android:layout_width="0dp"
         android:layout_height="2dp"
         android:background="@android:color/darker_gray"
-        app:layout_constraintTop_toBottomOf="@id/control_buttons"
+        app:layout_constraintTop_toBottomOf="@id/upcoming_events_layout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 

@@ -6,5 +6,6 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class CalendarEvent(
     val summary: String,
-    val startTime: String
+    val startTime: String,
+    val endTime: String = ""
 ) : Parcelable

@@ -31,8 +31,12 @@ import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.example.notifier.Calendar.SetupCalendar
+import com.example.notifier.Calendar.CalendarCacheManager
+import com.example.notifier.Calendar.CalendarEvent
+import android.widget.LinearLayout
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -50,6 +54,15 @@ class MainActivity : AppCompatActivity() {
     private val KEY_MUTE_STATE = "mute_state"
     private var calendarSetup: SetupCalendar? = null
     private var spotifyManager: SpotifyManager? = null
+    
+    // Calendar cache manager
+    private lateinit var calendarCacheManager: CalendarCacheManager
+    
+    // Upcoming events handling
+    private lateinit var upcomingEventsLayout: LinearLayout
+    private lateinit var eventsContainer: LinearLayout
+    private var upcomingEventsUpdateRunnable: Runnable? = null
+    private val UPCOMING_EVENTS_UPDATE_INTERVAL = 60000L // 1 minute
     
     // Permission state caching
     private var postNotificationPermissionGranted: Boolean? = null
@@ -121,6 +134,7 @@ class MainActivity : AppCompatActivity() {
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         // Initialize SharedPreferences HERE
         sharedPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        calendarCacheManager = CalendarCacheManager(this)
 
         // Get current state of Vibrate and Mute
         isVibrateMode = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
@@ -145,6 +159,9 @@ class MainActivity : AppCompatActivity() {
 
         setupRecyclerView()
         setupSwipeToDelete()
+        
+        // Setup upcoming events
+        setupUpcomingEvents()
 
         val filter = IntentFilter().apply {
             addAction("NEW_NOTIFICATION")
@@ -363,6 +380,8 @@ class MainActivity : AppCompatActivity() {
         spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
         // Clean up date update handler
         dateUpdateRunnable?.let { handler.removeCallbacks(it) }
+        // Clean up upcoming events updates
+        stopUpcomingEventsUpdates()
         super.onDestroy()
     }
 
@@ -627,6 +646,96 @@ class MainActivity : AppCompatActivity() {
             Toast.LENGTH_LONG).show()
         // Still proceed with calendar but with limited functionality
         proceedWithCalendarSetup()
+    }
+
+    private fun setupUpcomingEvents() {
+        upcomingEventsLayout = findViewById(R.id.upcoming_events_layout)
+        eventsContainer = findViewById(R.id.events_container)
+        startUpcomingEventsUpdates()
+    }
+    
+    private fun startUpcomingEventsUpdates() {
+        upcomingEventsUpdateRunnable = Runnable {
+            updateUpcomingEvents()
+            handler.postDelayed(upcomingEventsUpdateRunnable!!, UPCOMING_EVENTS_UPDATE_INTERVAL)
+        }
+        handler.post(upcomingEventsUpdateRunnable!!)
+    }
+    
+    private fun stopUpcomingEventsUpdates() {
+        upcomingEventsUpdateRunnable?.let { handler.removeCallbacks(it) }
+        upcomingEventsUpdateRunnable = null
+    }
+    
+    private fun updateUpcomingEvents() {
+        val upcomingEvents = getUpcomingEventsFromCache()
+        displayUpcomingEvents(upcomingEvents)
+    }
+    
+    private fun getUpcomingEventsFromCache(): List<CalendarEvent> {
+        val cachedEvents = calendarCacheManager.getCachedEvents()
+        if (cachedEvents == null) {
+            return emptyList()
+        }
+        
+        val now = System.currentTimeMillis()
+        val thirtyMinutesFromNow = now + (30 * 60 * 1000) // 30 minutes in milliseconds
+        
+        return cachedEvents.filter { event ->
+            val eventStartTime = parseEventTime(event.startTime)
+            val fiveMinutesAfterStart = eventStartTime + (5 * 60 * 1000) // 5 minutes after start
+            
+            // Show events that start within 30 minutes or are currently happening (up to 5 minutes after start)
+            (eventStartTime <= thirtyMinutesFromNow && eventStartTime >= now) || 
+            (eventStartTime <= now && now <= fiveMinutesAfterStart)
+        }.sortedBy { parseEventTime(it.startTime) }
+    }
+    
+    private fun parseEventTime(timeString: String): Long {
+        return try {
+            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            format.parse(timeString)?.time ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
+    }
+    
+    private fun formatEventTime(timeString: String): String {
+        return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val date = inputFormat.parse(timeString)
+            outputFormat.format(date ?: Date())
+        } catch (_: Exception) {
+            timeString
+        }
+    }
+    
+    private fun displayUpcomingEvents(events: List<CalendarEvent>) {
+        eventsContainer.removeAllViews()
+        
+        if (events.isEmpty()) {
+            upcomingEventsLayout.visibility = View.GONE
+            return
+        }
+        
+        upcomingEventsLayout.visibility = View.VISIBLE
+        
+        events.forEach { event ->
+            val eventView = layoutInflater.inflate(R.layout.item_upcoming_event, eventsContainer, false)
+            
+            val tvEventTime = eventView.findViewById<TextView>(R.id.tvEventTime)
+            val tvEventTitle = eventView.findViewById<TextView>(R.id.tvEventTitle)
+            
+            tvEventTime.text = formatEventTime(event.startTime)
+            tvEventTitle.text = event.summary
+            
+            eventsContainer.addView(eventView)
+        }
+    }
+    
+    fun refreshUpcomingEvents() {
+        updateUpcomingEvents()
     }
 
     private fun setupSpotifyControls() {
