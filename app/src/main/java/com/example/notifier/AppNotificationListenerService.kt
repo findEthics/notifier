@@ -25,7 +25,7 @@ class AppNotificationListenerService : NotificationListenerService() {
     // Batching components
     private val handler = Handler(Looper.getMainLooper())
     private val pendingNotifications = mutableListOf<StatusBarNotification>()
-    private val batchDelay = 10*1000L // 10s batching window
+    private val batchDelay = 8*1000L // 10s batching window
     
     private val batchProcessor = Runnable {
         processBatchedNotifications()

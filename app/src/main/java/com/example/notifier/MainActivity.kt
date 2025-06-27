@@ -68,7 +68,7 @@ class MainActivity : AppCompatActivity() {
     // E-ink display optimization
     private var isEinkOptimized = true // Assume e-ink for battery optimization
     private var lastEventsUpdate = 0L
-    private val EINK_UPDATE_THROTTLE = 10000L // 10 seconds minimum between UI updates
+    private val EINK_UPDATE_THROTTLE = 8 * 1000L // 8 seconds minimum between UI updates
     
     // Permission state caching
     private var postNotificationPermissionGranted: Boolean? = null
@@ -278,8 +278,7 @@ class MainActivity : AppCompatActivity() {
         if (upcomingEventsUpdateRunnable == null) {
             startUpcomingEventsUpdates()
         }
-        // Resume Spotify auto-disconnect timer if needed
-        spotifyManager?.resumeAutoDisconnectTimer()
+        // Spotify will connect when user interacts with controls
     }
 
 
@@ -289,8 +288,6 @@ class MainActivity : AppCompatActivity() {
         stopUpcomingEventsUpdates()
         // Clean up Spotify timeout to prevent background wake-ups
         spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
-        // Pause Spotify auto-disconnect timer to save battery
-        spotifyManager?.pauseAutoDisconnectTimer()
         // Clean up date update handler to prevent background wake-ups
         dateUpdateRunnable?.let { handler.removeCallbacks(it) }
     }

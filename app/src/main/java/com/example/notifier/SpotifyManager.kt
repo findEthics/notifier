@@ -181,16 +181,6 @@ class SpotifyManager(private val activity: Activity, private val onDisconnectCal
         handler.postDelayed(autoDisconnectRunnable!!, autoDisconnectDelay)
     }
     
-    // Battery optimization: pause/resume timer with app lifecycle
-    fun pauseAutoDisconnectTimer() {
-        cancelAutoDisconnect()
-    }
-    
-    fun resumeAutoDisconnectTimer() {
-        if (spotifyAppRemote != null && !isPlaying) {
-            startAutoDisconnectTimer()
-        }
-    }
     
     private fun cancelAutoDisconnect() {
         autoDisconnectRunnable?.let {
