@@ -8,6 +8,9 @@
     <string name="previous">Previous</string>
 
     <string name="clear_all_notifications">Clear all notifications</string>
+    <string name="open_maps">Open Maps</string>
+    <string name="open_assistant">Open Assistant</string>
+    <string name="open_whatsapp">Open WhatsApp</string>
 
     <string name="lorem_ipsum">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris

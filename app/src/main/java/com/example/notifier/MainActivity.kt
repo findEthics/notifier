@@ -19,6 +19,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import android.view.View
@@ -33,8 +34,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.example.notifier.Calendar.SetupCalendar
+import com.example.notifier.Calendar.CalendarCacheManager
+import com.example.notifier.Calendar.CalendarEvent
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
@@ -52,6 +56,9 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     private val keyVibrateMode = "vibrate_mode"
     private val keyMuteState = "mute_state"
     private val keyDarkMode = "dark_mode_enabled"
+    
+    // Calendar cache manager
+    private lateinit var calendarCacheManager: CalendarCacheManager
     
     // Bottom layout button configuration keys
     private val keyBottomButton1 = "bottom_button_1_package" // Maps button
@@ -81,6 +88,12 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     // App drawer handling
     private lateinit var appDrawerLayout: ConstraintLayout
     private var appDrawerAdapter: AppDrawerAdapter? = null
+    
+    // Upcoming events handling
+    private lateinit var upcomingEventsLayout: LinearLayout
+    private lateinit var eventsContainer: LinearLayout
+    private var upcomingEventsUpdateRunnable: Runnable? = null
+    private val UPCOMING_EVENTS_UPDATE_INTERVAL = 60000L // 1 minute
 
     // Implementation of NotificationCallback interface
     override fun onNewNotification(notification: NotificationUpdate) {
@@ -125,6 +138,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         
         // Initialize SharedPreferences FIRST
         sharedPrefs = getSharedPreferences(prefsName, MODE_PRIVATE)
+        calendarCacheManager = CalendarCacheManager(this)
         
         // Apply theme before setting content view
         applyTheme()
@@ -168,6 +182,9 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         
         // Setup app drawer
         setupAppDrawer()
+        
+        // Setup upcoming events
+        setupUpcomingEvents()
     }
 
     private fun setupActionButtonListeners() {
@@ -232,8 +249,8 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         invalidatePermissionCache()
         // Check if date has changed while app was in background
         updateDateIfChanged()
-        // Update bottom button icons in case configuration changed
-        updateBottomButtonsLayout()
+        // Update bottom button configuration in case it changed
+        setupBottomButtons()
     }
 
 
@@ -1020,6 +1037,129 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
             .start()
     }
     
+    private fun setupUpcomingEvents() {
+        upcomingEventsLayout = findViewById(R.id.upcoming_events_layout)
+        eventsContainer = findViewById(R.id.events_container)
+        
+        // Start periodic updates for upcoming events
+        startUpcomingEventsUpdates()
+    }
+    
+    private fun startUpcomingEventsUpdates() {
+        stopUpcomingEventsUpdates() // Stop any existing updates
+        
+        upcomingEventsUpdateRunnable = Runnable {
+            updateUpcomingEvents()
+            // Schedule next update
+            handler.postDelayed(upcomingEventsUpdateRunnable!!, UPCOMING_EVENTS_UPDATE_INTERVAL)
+        }
+        
+        // Initial update
+        updateUpcomingEvents()
+        // Schedule periodic updates
+        handler.postDelayed(upcomingEventsUpdateRunnable!!, UPCOMING_EVENTS_UPDATE_INTERVAL)
+    }
+    
+    private fun stopUpcomingEventsUpdates() {
+        upcomingEventsUpdateRunnable?.let { handler.removeCallbacks(it) }
+        upcomingEventsUpdateRunnable = null
+    }
+    
+    private fun updateUpcomingEvents() {
+        // Get upcoming events from calendar cache
+        val upcomingEvents = getUpcomingEventsFromCache()
+        
+        if (upcomingEvents.isNotEmpty()) {
+            displayUpcomingEvents(upcomingEvents)
+            upcomingEventsLayout.visibility = View.VISIBLE
+        } else {
+            upcomingEventsLayout.visibility = View.GONE
+        }
+    }
+    
+    // Public method to refresh upcoming events (called when calendar cache is updated)
+    fun refreshUpcomingEvents() {
+        updateUpcomingEvents()
+    }
+    
+    private fun getUpcomingEventsFromCache(): List<Pair<String, String>> {
+        try {
+            val cachedEvents = calendarCacheManager.getCachedEvents() ?: return emptyList()
+            val now = System.currentTimeMillis()
+            val thirtyMinutesFromNow = now + (30 * 60 * 1000)
+            
+            val upcomingEvents = cachedEvents.filter { event ->
+                try {
+                    val eventTime = parseEventTime(event.startTime)
+                    eventTime in now..thirtyMinutesFromNow
+                } catch (e: Exception) {
+                    false
+                }
+            }.map { event ->
+                val timeStr = formatEventTime(event.startTime)
+                Pair(timeStr, event.summary)
+            }
+            
+            return upcomingEvents
+        } catch (e: Exception) {
+            // Handle any calendar access errors gracefully
+            return emptyList()
+        }
+    }
+    
+    private fun parseEventTime(startTime: String): Long {
+        return try {
+            if (startTime.contains("T")) {
+                // DateTime format: 2024-06-22T14:30:00-07:00
+                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
+                sdf.parse(startTime)?.time ?: 0L
+            } else {
+                // Date format: 2024-06-22 (all-day event)
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                val calendar = Calendar.getInstance()
+                calendar.time = sdf.parse(startTime) ?: java.util.Date()
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.timeInMillis
+            }
+        } catch (e: Exception) {
+            0L
+        }
+    }
+    
+    private fun formatEventTime(startTime: String): String {
+        return try {
+            if (startTime.contains("T")) {
+                // DateTime format: 2024-06-22T14:30:00-07:00
+                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
+                val time = sdf.parse(startTime)
+                val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                timeFormat.format(time ?: java.util.Date())
+            } else {
+                // All-day event
+                "All Day"
+            }
+        } catch (e: Exception) {
+            "Time"
+        }
+    }
+    
+    private fun displayUpcomingEvents(events: List<Pair<String, String>>) {
+        // Clear existing event views
+        eventsContainer.removeAllViews()
+        
+        events.forEach { (time, title) ->
+            val eventView = layoutInflater.inflate(R.layout.item_upcoming_event, eventsContainer, false)
+            val tvEventTime = eventView.findViewById<TextView>(R.id.tvEventTime)
+            val tvEventTitle = eventView.findViewById<TextView>(R.id.tvEventTitle)
+            
+            tvEventTime.text = time
+            tvEventTitle.text = title
+            
+            eventsContainer.addView(eventView)
+        }
+    }
+    
     private fun launchApp(packageName: String) {
         try {
             val intent = packageManager.getLaunchIntentForPackage(packageName)
@@ -1131,6 +1271,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         hideBottomLayoutRunnable?.let { handler.removeCallbacks(it) }
         dateUpdateRunnable?.let { handler.removeCallbacks(it) }
         spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
+        stopUpcomingEventsUpdates()
         
         // Cleanup calendar
         calendarSetup?.cleanup()

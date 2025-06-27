@@ -9,6 +9,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.browser.customtabs.CustomTabsIntent
 import com.example.notifier.GoogleApiConstants
+import com.example.notifier.MainActivity
 import io.ktor.client.HttpClient // Ktor HTTP Client
 import io.ktor.client.engine.cio.CIO // Ktor CIO Engine
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation // Ktor Content Negotiation
@@ -74,6 +75,8 @@ class SetupCalendar(private val activity: Activity) {
                 if (cachedEvents != null) {
                     // Show cached events immediately
                     Toast.makeText(activity, "Using cached events", Toast.LENGTH_SHORT).show()
+                    // Refresh upcoming events display
+                    (activity as? MainActivity)?.refreshUpcomingEvents()
                     val intent = Intent(activity, CalendarActivity::class.java).apply {
                         putParcelableArrayListExtra("EVENTS_LIST", ArrayList(cachedEvents))
                     }
@@ -251,6 +254,8 @@ class SetupCalendar(private val activity: Activity) {
             if (cachedEvents != null) {
                 activity.runOnUiThread {
                     Toast.makeText(activity, "Using cached events", Toast.LENGTH_SHORT).show()
+                    // Refresh upcoming events display
+                    (activity as? MainActivity)?.refreshUpcomingEvents()
                 }
                 return cachedEvents
             }
@@ -321,6 +326,8 @@ class SetupCalendar(private val activity: Activity) {
                 
                 activity.runOnUiThread {
                     Toast.makeText(activity, "Fetched fresh events", Toast.LENGTH_SHORT).show()
+                    // Refresh upcoming events display
+                    (activity as? MainActivity)?.refreshUpcomingEvents()
                 }
 
                 // REMINDER SYNCHRONIZATION LOGIC ---
