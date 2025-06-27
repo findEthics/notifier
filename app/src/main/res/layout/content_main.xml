@@ -158,7 +158,7 @@
             android:id="@+id/tvUpcomingEventsHeader"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Current & Upcoming Events"
+            android:text="Current &amp; Upcoming Events"
             android:textSize="14sp"
             android:textStyle="bold"
             android:textColor="?android:attr/textColorPrimary"

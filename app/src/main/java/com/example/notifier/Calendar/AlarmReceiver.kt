@@ -1,48 +1,67 @@
 package com.example.notifier.Calendar
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import com.example.notifier.MainActivity
-import com.example.notifier.R
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.os.Build
 
 class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val eventSummary = intent.getStringExtra("EVENT_SUMMARY") ?: "Event"
         val eventStartTime = intent.getStringExtra("EVENT_START_TIME") ?: ""
-        val notificationId = intent.getIntExtra("NOTIFICATION_ID", 0)
-
-        val formattedTime = try {
-            val odt = OffsetDateTime.parse(eventStartTime)
-            val formatter = DateTimeFormatter.ofPattern("HH:mm")
-            odt.format(formatter)
-        } catch (e: Exception) { "" }
-
-        // Create an intent to open the app when the notification is tapped
-        val tapIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        
+        // Play notification sound instead of posting visual notification
+        playNotificationSound(context)
+        
+        // Optional: Add vibration for additional feedback
+        vibrate(context)
+    }
+    
+    private fun playNotificationSound(context: Context) {
+        try {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            
+            // Check if device is not in silent mode
+            if (audioManager.ringerMode != AudioManager.RINGER_MODE_SILENT) {
+                // Play notification sound using ToneGenerator
+                val toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 500) // 500ms beep
+                
+                // Release resources after a short delay
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    toneGenerator.release()
+                }, 600)
+            }
+        } catch (e: Exception) {
+            // Gracefully handle any audio playback errors
         }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(context, 0, tapIntent, PendingIntent.FLAG_IMMUTABLE)
-
-        val builder = NotificationCompat.Builder(context, "CALENDAR_REMINDERS")
-            .setSmallIcon(R.drawable.ic_calendar) // Your calendar icon
-            .setContentTitle(eventSummary)
-            .setContentText("Starts at $formattedTime")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_SYSTEM)
-            // --- DIAGNOSTIC TEST: Temporarily make the notification ongoing ---
-//            .setOngoing(true)
-
-        with(NotificationManagerCompat.from(context)) {
-            // notificationId is unique for each notification
-            notify(notificationId, builder.build())
+    }
+    
+    private fun vibrate(context: Context) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // Android 12+ (API 31+)
+                val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                val vibrator = vibratorManager.defaultVibrator
+                vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                // Pre-Android 12
+                @Suppress("DEPRECATION")
+                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(200)
+                }
+            }
+        } catch (e: Exception) {
+            // Gracefully handle any vibration errors
         }
     }
 }
