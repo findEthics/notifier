@@ -62,7 +62,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var upcomingEventsLayout: LinearLayout
     private lateinit var eventsContainer: LinearLayout
     private var upcomingEventsUpdateRunnable: Runnable? = null
-    private val UPCOMING_EVENTS_UPDATE_INTERVAL = 60000L // 1 minute
+    // Optimized for e-ink displays - longer intervals save battery
+    private val UPCOMING_EVENTS_UPDATE_INTERVAL = 5 * 60 * 1000L // 5 minutes (was 1 minute)
+    
+    // E-ink display optimization
+    private var isEinkOptimized = true // Assume e-ink for battery optimization
+    private var lastEventsUpdate = 0L
+    private val EINK_UPDATE_THROTTLE = 10000L // 10 seconds minimum between UI updates
     
     // Permission state caching
     private var postNotificationPermissionGranted: Boolean? = null
@@ -268,15 +274,41 @@ class MainActivity : AppCompatActivity() {
         invalidatePermissionCache()
         // Check if date has changed while app was in background
         updateDateIfChanged()
+        // Restart upcoming events updates if they were stopped
+        if (upcomingEventsUpdateRunnable == null) {
+            startUpcomingEventsUpdates()
+        }
+        // Resume Spotify auto-disconnect timer if needed
+        spotifyManager?.resumeAutoDisconnectTimer()
     }
 
+
+    override fun onPause() {
+        super.onPause()
+        // Stop background updates to save battery when app not visible
+        stopUpcomingEventsUpdates()
+        // Clean up Spotify timeout to prevent background wake-ups
+        spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
+        // Pause Spotify auto-disconnect timer to save battery
+        spotifyManager?.pauseAutoDisconnectTimer()
+        // Clean up date update handler to prevent background wake-ups
+        dateUpdateRunnable?.let { handler.removeCallbacks(it) }
+    }
 
     override fun onStop() {
         super.onStop()
 //        spotifyManager?.disconnect()
     }
 
+    // Battery optimization: Cache system state verification
+    private var lastVerificationTime = 0L
+    private val VERIFICATION_THROTTLE = 30000L // 30 seconds
+    
     private fun verifySystemState() {
+        // Throttle verification to save battery on frequent resumes
+        val now = System.currentTimeMillis()
+        if (now - lastVerificationTime < VERIFICATION_THROTTLE) return
+        lastVerificationTime = now
 
         val btnMute = findViewById<ImageButton>(R.id.btnMute)
         val btnRingVibrate = findViewById<ImageButton>(R.id.btnRingVibrate)
@@ -429,7 +461,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupCurrentDate() {
         updateDateIfChanged()
-        scheduleNextMidnightUpdate()
+        // Remove automatic midnight scheduling to save battery
+        // Date will update on app resume instead
     }
     
     private fun updateDateIfChanged() {
@@ -445,31 +478,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun scheduleNextMidnightUpdate() {
-        // Cancel any existing scheduled update
-        dateUpdateRunnable?.let { handler.removeCallbacks(it) }
-        
-        // Calculate time until next midnight
-        val now = Calendar.getInstance()
-        val nextMidnight = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_MONTH, 1)  // Tomorrow
-            set(Calendar.HOUR_OF_DAY, 0)   // 00:00
-            set(Calendar.MINUTE, 0)        // 00:00
-            set(Calendar.SECOND, 1)        // 00:01 (1 second after midnight)
-            set(Calendar.MILLISECOND, 0)
-        }
-        
-        val millisecondsUntilMidnight = nextMidnight.timeInMillis - now.timeInMillis
-        
-        // Create the update runnable
-        dateUpdateRunnable = Runnable {
-            updateDateIfChanged()           // Update the display
-            scheduleNextMidnightUpdate()    // Schedule next day's update
-        }
-        
-        // Schedule exactly at next midnight
-        handler.postDelayed(dateUpdateRunnable!!, millisecondsUntilMidnight)
-    }
+    // Removed scheduleNextMidnightUpdate() to save battery
+    // Date updates now happen only on app resume for e-ink optimization
 
     private fun setupDateDisplayCalendar() {
         val tvCurrentDate = findViewById<TextView>(R.id.tvCurrentDate)
@@ -657,7 +667,10 @@ class MainActivity : AppCompatActivity() {
     private fun startUpcomingEventsUpdates() {
         upcomingEventsUpdateRunnable = Runnable {
             updateUpcomingEvents()
-            handler.postDelayed(upcomingEventsUpdateRunnable!!, UPCOMING_EVENTS_UPDATE_INTERVAL)
+            // Only reschedule if still visible to user (not paused)
+            if (upcomingEventsUpdateRunnable != null) {
+                handler.postDelayed(upcomingEventsUpdateRunnable!!, UPCOMING_EVENTS_UPDATE_INTERVAL)
+            }
         }
         handler.post(upcomingEventsUpdateRunnable!!)
     }
@@ -668,6 +681,15 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun updateUpcomingEvents() {
+        // E-ink optimization: throttle UI updates to save battery and screen life
+        if (isEinkOptimized) {
+            val now = System.currentTimeMillis()
+            if (now - lastEventsUpdate < EINK_UPDATE_THROTTLE) {
+                return // Skip update if too recent
+            }
+            lastEventsUpdate = now
+        }
+        
         val upcomingEvents = getUpcomingEventsFromCache()
         displayUpcomingEvents(upcomingEvents)
     }
@@ -735,6 +757,8 @@ class MainActivity : AppCompatActivity() {
     }
     
     fun refreshUpcomingEvents() {
+        // Force update regardless of throttling (user-initiated)
+        lastEventsUpdate = 0L
         updateUpcomingEvents()
     }
 
