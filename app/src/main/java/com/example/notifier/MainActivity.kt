@@ -1,6 +1,8 @@
 package com.example.notifier
 
 import android.Manifest
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.NotificationChannel
@@ -13,6 +15,8 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
@@ -27,10 +31,12 @@ import androidx.recyclerview.widget.RecyclerView
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.constraintlayout.widget.ConstraintLayout
 import com.example.notifier.Calendar.SetupCalendar
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity(), NotificationCallback {
     private val notifications = mutableListOf<NotificationData>()
@@ -60,6 +66,12 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
     // Date update handling
     private var dateUpdateRunnable: Runnable? = null
     private var lastDisplayedDate: String? = null
+    
+    // Bottom layout gesture handling
+    private lateinit var gestureDetector: GestureDetector
+    private lateinit var bottomButtonLayout: ConstraintLayout
+    private var hideBottomLayoutRunnable: Runnable? = null
+    private val BOTTOM_LAYOUT_HIDE_DELAY = 15000L // 15 seconds
 
     // Implementation of NotificationCallback interface
     override fun onNewNotification(notification: NotificationUpdate) {
@@ -144,6 +156,8 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         // Register as the activity callback
         NotificationCommunicationManager.registerActivityCallback(this)
 
+        // Setup bottom layout gesture handling
+        setupBottomLayoutGesture()
     }
 
     private fun setupActionButtonListeners() {
@@ -181,12 +195,14 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         // Clear button setup
         val btnClear = findViewById<ImageButton>(R.id.btnClear)
         btnClear.setOnClickListener {
+            resetBottomLayoutTimer()
             notifications.clear()
             adapter.notifyDataSetChanged()
         }
         //WhatsApp button setup
         val openWhatsApp = findViewById<ImageButton>(R.id.btnWhatsApp)
         openWhatsApp.setOnClickListener {
+            resetBottomLayoutTimer()
             // Open WhatsApp
             try {
                 val intent = packageManager.getLaunchIntentForPackage("com.whatsapp")
@@ -202,6 +218,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         //Assistant button setup
         val openAssistant = findViewById<ImageButton>(R.id.btnAssistant)
         openAssistant.setOnClickListener {
+            resetBottomLayoutTimer()
             // Open Claude Assistant
             try {
                 val claudeIntent = packageManager.getLaunchIntentForPackage("com.anthropic.claude")
@@ -217,6 +234,7 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         //Maps button setup
         val openMaps = findViewById<ImageButton>(R.id.btnMaps)
         openMaps.setOnClickListener {
+            resetBottomLayoutTimer()
             try {
                 val intentGmapsWV = packageManager.getLaunchIntentForPackage("com.google.android.apps.mapslite")
                 if (intentGmapsWV != null) {
@@ -335,17 +353,6 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         return enabledListeners?.contains(packageName) == true
     }
 
-    override fun onDestroy() {
-        // Unregister from communication manager
-        NotificationCommunicationManager.unregisterActivityCallback()
-        calendarSetup?.cleanup()
-        spotifyManager?.disconnect()
-        // Clean up Spotify timeout
-        spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
-        // Clean up date update handler
-        dateUpdateRunnable?.let { handler.removeCallbacks(it) }
-        super.onDestroy()
-    }
 
     private fun getAppName(packageName: String): String {
         return try {
@@ -810,6 +817,115 @@ class MainActivity : AppCompatActivity(), NotificationCallback {
         btnSettings.setOnClickListener {
             showSettingsDialog()
         }
+    }
+
+    private fun setupBottomLayoutGesture() {
+        bottomButtonLayout = findViewById(R.id.bottomButtonLayout)
+        
+        // Create gesture detector for swipe up detection
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(
+                e1: MotionEvent?,
+                e2: MotionEvent,
+                velocityX: Float,
+                velocityY: Float
+            ): Boolean {
+                if (e1 != null) {
+                    val deltaY = e1.y - e2.y
+                    val deltaX = abs(e1.x - e2.x)
+                    
+                    // Check if it's a swipe up gesture
+                    if (deltaY > 50 && deltaX < 200 && abs(velocityY) > 300) {
+                        showBottomLayout()
+                        return true
+                    }
+                }
+                return false
+            }
+            
+            override fun onDown(e: MotionEvent): Boolean {
+                return true
+            }
+        })
+    }
+    
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        // Let gesture detector process the event first (if initialized)
+        if (::gestureDetector.isInitialized) {
+            gestureDetector.onTouchEvent(ev)
+        }
+        
+        // Always pass the event to the super class for normal processing
+        return super.dispatchTouchEvent(ev)
+    }
+    
+    private fun showBottomLayout() {
+        if (bottomButtonLayout.visibility != View.VISIBLE) {
+            bottomButtonLayout.visibility = View.VISIBLE
+            bottomButtonLayout.alpha = 0f
+            bottomButtonLayout.translationY = bottomButtonLayout.height.toFloat()
+            
+            bottomButtonLayout.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(300)
+                .setListener(null)
+                .start()
+        }
+        
+        // Reset the auto-hide timer
+        scheduleBottomLayoutHide()
+    }
+    
+    private fun hideBottomLayout() {
+        if (bottomButtonLayout.visibility == View.VISIBLE) {
+            bottomButtonLayout.animate()
+                .alpha(0f)
+                .translationY(bottomButtonLayout.height.toFloat())
+                .setDuration(300)
+                .setListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        bottomButtonLayout.visibility = View.GONE
+                    }
+                })
+                .start()
+        }
+    }
+    
+    private fun scheduleBottomLayoutHide() {
+        // Cancel any existing hide timer
+        hideBottomLayoutRunnable?.let { handler.removeCallbacks(it) }
+        
+        // Schedule new hide timer
+        hideBottomLayoutRunnable = Runnable {
+            hideBottomLayout()
+        }
+        handler.postDelayed(hideBottomLayoutRunnable!!, BOTTOM_LAYOUT_HIDE_DELAY)
+    }
+    
+    private fun resetBottomLayoutTimer() {
+        // Reset the auto-hide timer when user interacts with bottom buttons
+        if (bottomButtonLayout.visibility == View.VISIBLE) {
+            scheduleBottomLayoutHide()
+        }
+    }
+    
+    override fun onDestroy() {
+        // Clean up timers
+        hideBottomLayoutRunnable?.let { handler.removeCallbacks(it) }
+        dateUpdateRunnable?.let { handler.removeCallbacks(it) }
+        spotifyTimeoutRunnable?.let { handler.removeCallbacks(it) }
+        
+        // Cleanup calendar
+        calendarSetup?.cleanup()
+        
+        // Disconnect Spotify
+        spotifyManager?.disconnect()
+        
+        // Unregister from communication manager
+        NotificationCommunicationManager.unregisterActivityCallback()
+        
+        super.onDestroy()
     }
 
 }

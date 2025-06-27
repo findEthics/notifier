@@ -10,13 +10,15 @@
     <include layout="@layout/content_main" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/bottomButtonLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
         android:paddingTop="8dp"
-        android:paddingBottom="16dp"> <!-- Added a bit more bottom padding for aesthetics -->
+        android:paddingBottom="16dp"
+        android:visibility="gone"> <!-- Hidden by default -->
 
         <ImageButton
             android:id="@+id/btnMaps"
