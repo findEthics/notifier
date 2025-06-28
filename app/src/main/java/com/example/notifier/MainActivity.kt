@@ -34,6 +34,8 @@ import com.example.notifier.Calendar.SetupCalendar
 import com.example.notifier.Calendar.CalendarCacheManager
 import com.example.notifier.Calendar.CalendarEvent
 import android.widget.LinearLayout
+import android.widget.EditText
+import android.widget.Button
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -57,6 +59,9 @@ class MainActivity : AppCompatActivity() {
     
     // Calendar cache manager
     private lateinit var calendarCacheManager: CalendarCacheManager
+    
+    // Public calendar manager
+    private lateinit var publicCalendarManager: PublicCalendarManager
     
     // Upcoming events handling
     private lateinit var upcomingEventsLayout: LinearLayout
@@ -141,6 +146,7 @@ class MainActivity : AppCompatActivity() {
         // Initialize SharedPreferences HERE
         sharedPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         calendarCacheManager = CalendarCacheManager(this)
+        publicCalendarManager = PublicCalendarManager(this)
 
         // Get current state of Vibrate and Mute
         isVibrateMode = audioManager.ringerMode == AudioManager.RINGER_MODE_VIBRATE
@@ -259,6 +265,12 @@ class MainActivity : AppCompatActivity() {
             } catch (e: PackageManager.NameNotFoundException) {
                 Toast.makeText(this, "No Map app found", Toast.LENGTH_SHORT).show()
             }
+        }
+        
+        // Settings button setup
+        val btnSettings = findViewById<ImageButton>(R.id.btnSettings)
+        btnSettings.setOnClickListener {
+            showSettingsDialog()
         }
     }
 
@@ -480,9 +492,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupDateDisplayCalendar() {
         val tvCurrentDate = findViewById<TextView>(R.id.tvCurrentDate)
+        
+        // Single tap: Quick view (public URL if available)
         tvCurrentDate.setOnClickListener {
-            // Use the same calendar permission flow as before
+            if (publicCalendarManager.hasPublicCalendarUrl()) {
+                // Use public calendar URL - no permissions needed
+                publicCalendarManager.openPublicCalendar()
+                Toast.makeText(this, "Long press for reminders & editing", Toast.LENGTH_SHORT).show()
+            } else {
+                // Fall back to original calendar setup with permissions
+                checkCalendarPermissionsAndProceed()
+            }
+        }
+        
+        // Long press: Full calendar functionality (reminders, editing)
+        tvCurrentDate.setOnLongClickListener {
+            Toast.makeText(this, "Opening full calendar with reminder functionality", Toast.LENGTH_SHORT).show()
             checkCalendarPermissionsAndProceed()
+            true // Consume the long press event
         }
     }
 
@@ -815,6 +842,46 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+    
+    private fun showSettingsDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_settings, null)
+        val etPublicCalendarUrl = dialogView.findViewById<EditText>(R.id.etPublicCalendarUrl)
+        val btnClearUrl = dialogView.findViewById<Button>(R.id.btnClearUrl)
+        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
+        val btnSave = dialogView.findViewById<Button>(R.id.btnSave)
+        
+        // Load current URL
+        etPublicCalendarUrl.setText(publicCalendarManager.getPublicCalendarUrl() ?: "")
+        
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create()
+        
+        btnClearUrl.setOnClickListener {
+            etPublicCalendarUrl.setText("")
+        }
+        
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        btnSave.setOnClickListener {
+            val url = etPublicCalendarUrl.text.toString().trim()
+            if (url.isEmpty()) {
+                publicCalendarManager.clearPublicCalendarUrl()
+                Toast.makeText(this, "Public calendar URL cleared", Toast.LENGTH_SHORT).show()
+            } else if (publicCalendarManager.isValidCalendarUrl(url)) {
+                publicCalendarManager.savePublicCalendarUrl(url)
+                Toast.makeText(this, "Public calendar URL saved", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Please enter a valid Google Calendar URL", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            dialog.dismiss()
+        }
+        
+        dialog.show()
     }
 
 }

@@ -84,7 +84,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Date Display (clickable for calendar) -->
+        <!-- Date Display (tap=view, long press=reminders) -->
         <TextView
             android:id="@+id/tvCurrentDate"
             android:layout_width="wrap_content"
@@ -97,7 +97,8 @@
             android:paddingEnd="8dp"
             android:background="?android:attr/selectableItemBackground"
             android:clickable="true"
-            android:focusable="true"/>
+            android:focusable="true"
+            android:longClickable="true"/>
 
         <!-- Spacer to push buttons to the right -->
         <View
