@@ -55,10 +55,8 @@ class CalendarActivity : AppCompatActivity() {
                     val newEvents = calendarSetup.fetchCalendarEvents(accessToken, forceRefresh = true)
                     if (newEvents != null) {
                         adapter.updateData(newEvents)
-                        // Log.i("CalendarActivity", "Events refreshed successfully")
                         Toast.makeText(this@CalendarActivity, "Events refreshed", Toast.LENGTH_SHORT).show()
                     } else {
-                        // Log.e("CalendarActivity", "Failed to fetch events with existing token")
                         Toast.makeText(this@CalendarActivity, "Failed to fetch events", Toast.LENGTH_SHORT).show()
                     }
                 } else {

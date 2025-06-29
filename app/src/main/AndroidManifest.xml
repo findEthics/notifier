@@ -51,11 +51,6 @@
             android:name=".Calendar.CalendarActivity"
             android:exported="false" />
 
-        <activity
-            android:name=".CalendarWebViewActivity"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.Notifier" />
 
         <service
             android:name=".AppNotificationListenerService"

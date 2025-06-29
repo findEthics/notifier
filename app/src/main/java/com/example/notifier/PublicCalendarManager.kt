@@ -26,27 +26,6 @@ class PublicCalendarManager(private val context: Context) {
         return !getPublicCalendarUrl().isNullOrEmpty()
     }
     
-    fun openPublicCalendar(): Boolean {
-        val url = getPublicCalendarUrl()
-        return if (!url.isNullOrEmpty()) {
-            try {
-                val scheduleViewUrl = convertToScheduleView(url)
-                val intent = Intent(context, CalendarWebViewActivity::class.java).apply {
-                    putExtra("calendar_url", scheduleViewUrl)
-                    // Use single task mode to reuse existing activity
-                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                }
-                context.startActivity(intent)
-                true
-            } catch (e: Exception) {
-                Toast.makeText(context, "Error opening calendar: ${e.message}", Toast.LENGTH_SHORT).show()
-                false
-            }
-        } else {
-            Toast.makeText(context, "No public calendar URL configured", Toast.LENGTH_SHORT).show()
-            false
-        }
-    }
     
     private fun convertToScheduleView(originalUrl: String): String {
         val uri = Uri.parse(originalUrl)

@@ -21,14 +21,6 @@
         android:textStyle="bold"
         android:layout_marginBottom="8dp" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Enter your Google Calendar public URL to open directly in browser"
-        android:textSize="12sp"
-        android:textColor="?android:attr/textColorSecondary"
-        android:layout_marginBottom="8dp" />
-
     <EditText
         android:id="@+id/etPublicCalendarUrl"
         android:layout_width="match_parent"
