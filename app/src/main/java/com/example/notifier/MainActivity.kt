@@ -496,8 +496,8 @@ class MainActivity : AppCompatActivity() {
         // Single tap: Quick view (public URL if available)
         tvCurrentDate.setOnClickListener {
             if (publicCalendarManager.hasPublicCalendarUrl()) {
-                // Use public calendar URL - no permissions needed
-                publicCalendarManager.openPublicCalendar()
+                // Use public calendar URL in browser with reuse flags
+                publicCalendarManager.openPublicCalendarInBrowser()
                 Toast.makeText(this, "Long press for reminders & editing", Toast.LENGTH_SHORT).show()
             } else {
                 // Fall back to original calendar setup with permissions

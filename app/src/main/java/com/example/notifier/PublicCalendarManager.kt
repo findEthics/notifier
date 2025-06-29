@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
+import android.provider.Browser
 import android.widget.Toast
 
 class PublicCalendarManager(private val context: Context) {
@@ -63,7 +64,7 @@ class PublicCalendarManager(private val context: Context) {
             }
         }
         
-        // Force agenda/schedule view
+        // Force agenda/schedule view - this was working in WebView
         builder.appendQueryParameter("mode", "AGENDA")
         
         return builder.build().toString()
@@ -79,18 +80,17 @@ class PublicCalendarManager(private val context: Context) {
                 url.startsWith("https://calendar.google.com/calendar/u/"))
     }
     
-    // Alternative: Open in browser but with flags to reuse existing tab
+    // Open in browser with tab reuse using Browser.EXTRA_APPLICATION_ID
     fun openPublicCalendarInBrowser(): Boolean {
         val url = getPublicCalendarUrl()
         return if (!url.isNullOrEmpty()) {
             try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                    // These flags help reuse existing browser instance
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
-                           Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                           Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    // Add category to prefer existing browser tab
+                val scheduleViewUrl = convertToScheduleView(url)
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(scheduleViewUrl)).apply {
+                    // Use Browser.EXTRA_APPLICATION_ID to reuse existing tabs
+                    putExtra(Browser.EXTRA_APPLICATION_ID, context.packageName)
                     addCategory(Intent.CATEGORY_BROWSABLE)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(intent)
                 true
